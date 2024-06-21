@@ -2,8 +2,16 @@ import os
 import requests
 from flask import Flask, render_template, request, jsonify, session
 from bs4 import BeautifulSoup
+import logging
+from dotenv import load_dotenv
 
 app = Flask(__name__)
+
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://rargb.to/"
 HEADERS = {
