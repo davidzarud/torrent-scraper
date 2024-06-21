@@ -1,29 +1,37 @@
 import os
 import requests
-from flask import Flask, render_template, request, jsonify, session
 from bs4 import BeautifulSoup
-import logging
-from dotenv import load_dotenv
+from flask import Flask, render_template, request, jsonify
+from requests.exceptions import RequestException
 
 app = Flask(__name__)
-
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 BASE_URL = "https://rargb.to/"
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-# qBittorrent configuration from environment variables
 QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
-QBITTORRENT_API_LOGIN = "/api/v2/auth/login"
-QBITTORRENT_API_ADD_TORRENT = "/api/v2/torrents/add"
 QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
 QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
+
+session = requests.Session()
+
+def login_to_qbittorrent():
+    login_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
+    data = {
+        'username': QBITTORRENT_USERNAME,
+        'password': QBITTORRENT_PASSWORD
+    }
+    try:
+        response = session.post(login_url, data=data)
+        response.raise_for_status()
+        if response.text != "Ok.":
+            raise Exception("Failed to login to qBittorrent")
+    except RequestException as e:
+        print(f"Login error: {e}")
+        return False
+    return True
 
 def fetch_html(url):
     response = requests.get(url, headers=HEADERS)
@@ -73,33 +81,24 @@ def fetch_magnet_link(torrent_url):
     else:
         return None
 
-def login_to_qbittorrent():
-    global session
-    login_url = QBITTORRENT_BASE_URL + QBITTORRENT_API_LOGIN
-    login_data = {
-        'username': QBITTORRENT_USERNAME,
-        'password': QBITTORRENT_PASSWORD
-    }
-    response = session.post(login_url, data=login_data)
-    if response.status_code == 200:
-        print("Logged in to qBittorrent successfully.")
-        return True
-    else:
-        print(f"Failed to log in to qBittorrent. Status code: {response.status_code}")
+def add_torrent_to_qbittorrent(magnet_link):
+    if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
+        print("qBittorrent credentials not set.")
         return False
 
-def add_torrent_to_qbittorrent(magnet_link):
-    global session
-    add_torrent_url = QBITTORRENT_BASE_URL + QBITTORRENT_API_ADD_TORRENT
-    data = {
-        'urls': magnet_link
-    }
-    response = session.post(add_torrent_url, data=data)
-    if response.status_code == 200:
-        print("Torrent added successfully to qBittorrent.")
+    if 'SID' not in session.cookies:
+        if not login_to_qbittorrent():
+            print("Failed to login to qBittorrent.")
+            return False
+
+    add_torrent_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/add"
+    data = {'urls': magnet_link}
+    try:
+        response = session.post(add_torrent_url, data=data)
+        response.raise_for_status()
         return True
-    else:
-        print(f"Failed to add torrent to qBittorrent. Status code: {response.status_code}")
+    except RequestException as e:
+        print(f"Error adding torrent: {e}")
         return False
 
 @app.route('/')
@@ -127,12 +126,9 @@ def get_magnet_link():
     magnet_link = fetch_magnet_link(torrent_url)
     if magnet_link:
         success = add_torrent_to_qbittorrent(magnet_link)
-        if success:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': False, 'error': 'Failed to add torrent to qBittorrent.'}), 500
+        return jsonify({'success': success})
     else:
-        return jsonify({'success': False, 'error': 'Failed to fetch magnet link.'}), 400
+        return jsonify({'success': False})
 
 def search_torrents(query):
     search_url = f"https://rargb.to/search/?search={query}"
@@ -143,9 +139,4 @@ def search_torrents(query):
         return []
 
 if __name__ == "__main__":
-    session = requests.Session()
-    logged_in = login_to_qbittorrent()
-    if logged_in:
-        app.run(host='0.0.0.0', port=8888)
-    else:
-        print("Failed to login to qBittorrent. Exiting.")
+    app.run(host='0.0.0.0', port=8888)
