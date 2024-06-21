@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  torrent_scraper:
+    image: torrent_scraper
+    build: .
+    ports:
+      - "8888:8888"
+    environment:
+      - QBITTORRENT_BASE_URL=${QBITTORRENT_BASE_URL}
+      - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
+      - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
