@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torrent Scraper</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        function fetchAndCopyMagnetLink(torrentUrl) {
+            $.ajax({
+                url: '/get_magnet_link',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ 'torrent_url': torrentUrl }),
+                success: function(response) {
+                    if (response.success) {
+                        alert('Torrent added to qBittorrent!');
+                    } else {
+                        alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Failed to fetch magnet link:', error);
+                    alert('Failed to fetch magnet link. Please try again later.');
+                }
+            });
+        }
+
+        function copyToClipboard(text) {
+            var textField = document.createElement('textarea');
+            textField.innerText = text;
+            document.body.appendChild(textField);
+            textField.select();
+            document.execCommand('copy');
+            textField.remove();
+        }
+    </script>
+</head>
+<body>
+<div class="container">
+    <h1 class="mt-4">Movies</h1>
+
+    <!-- Search form -->
+    <form class="form-inline mt-4 mb-4" action="/" method="GET">
+        <input type="text" class="form-control mr-sm-2" name="search" placeholder="Search...">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    <table class="table table-striped mt-4">
+        <thead>
+        <tr>
+            <th>Title</th>
+            <th>Link</th>
+            <th>Category</th>
+            <th>Size</th>
+            <th>Seeders</th>
+            <th>Leechers</th>
+            <th>Date Uploaded</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for torrent in torrents %}
+        <tr>
+            <td>{{ torrent.title }}</td>
+            <td><a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;">Get Magnet Link</a></td>
+            <td>{{ torrent.category }}</td>
+            <td>{{ torrent.size }}</td>
+            <td>{{ torrent.seeders }}</td>
+            <td>{{ torrent.leechers }}</td>
+            <td>{{ torrent.date_uploaded }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if not search_query %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}">Next</a></li>
+        </ul>
+    </nav>
+    {% endif %}
+
+</div>
+</body>
+</html>
