@@ -33,6 +33,19 @@ def login_to_qbittorrent():
         return False
     return True
 
+def is_session_valid():
+    try:
+        response = session.get(f"{QBITTORRENT_BASE_URL}/api/v2/app/version")
+        response.raise_for_status()
+        return True
+    except RequestException:
+        return False
+
+def ensure_qbittorrent_session():
+    if 'SID' not in session.cookies or not is_session_valid():
+        return login_to_qbittorrent()
+    return True
+
 def fetch_html(url):
     response = requests.get(url, headers=HEADERS)
     if response.status_code == 200:
@@ -47,7 +60,7 @@ def parse_html(html):
 
     for row in soup.select("table.lista2t > tr.lista2"):
         columns = row.select("td")
-        if len(columns) > 6:  # Ensure there are enough columns
+        if len(columns) > 6:
             title_column = columns[1].select_one("a")
             if title_column:
                 title = title_column.text
@@ -56,7 +69,7 @@ def parse_html(html):
                 if category in ["Movies/Bollywood", "Movies/Dubs/Dual Audio", "XXX/Video"]:
                     continue
                 size = columns[4].text
-                seeders = int(columns[5].text)  # Convert to integer for sorting
+                seeders = int(columns[5].text)
                 leechers = columns[6].text
                 date_uploaded = columns[3].text
 
@@ -86,10 +99,9 @@ def add_torrent_to_qbittorrent(magnet_link):
         print("qBittorrent credentials not set.")
         return False
 
-    if 'SID' not in session.cookies:
-        if not login_to_qbittorrent():
-            print("Failed to login to qBittorrent.")
-            return False
+    if not ensure_qbittorrent_session():
+        print("Failed to login to qBittorrent.")
+        return False
 
     add_torrent_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/add"
     data = {'urls': magnet_link}
@@ -108,7 +120,6 @@ def home():
 
     if search_query:
         torrents = search_torrents(search_query)
-        # Sort torrents by seeders descending
         torrents.sort(key=lambda x: x['seeders'], reverse=True)
     else:
         page_url = f"{BASE_URL}movies/{page}/"
