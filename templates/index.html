@@ -5,46 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Torrent Scraper</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script>
-        function fetchAndCopyMagnetLink(torrentUrl) {
-            $.ajax({
-                url: '/get_magnet_link',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ 'torrent_url': torrentUrl }),
-                success: function(response) {
-                    if (response.success) {
-                        alert('Torrent added to qBittorrent!');
-                    } else {
-                        alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Failed to fetch magnet link:', error);
-                    alert('Failed to fetch magnet link. Please try again later.');
-                }
-            });
+    <style>
+        body {
+            padding-top: 20px;
         }
-
-        function copyToClipboard(text) {
-            var textField = document.createElement('textarea');
-            textField.innerText = text;
-            document.body.appendChild(textField);
-            textField.select();
-            document.execCommand('copy');
-            textField.remove();
+        .container {
+            max-width: 1000px;
         }
-    </script>
+        .nav-tabs .nav-link.active {
+            background-color: #007bff;
+            color: white !important;
+        }
+    </style>
 </head>
 <body>
 <div class="container">
-    <h1 class="mt-4">Movies</h1>
+    <h1 class="mt-4">Torrent Scraper</h1>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs mt-4">
+        <li class="nav-item">
+            <a class="nav-link {% if category == 'movies' %}active{% endif %}" href="/movies">Movies</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if category == 'tv' %}active{% endif %}" href="/tv">TV Shows</a>
+        </li>
+    </ul>
 
     <!-- Search form -->
-    <form class="form-inline mt-4 mb-4" action="/" method="GET">
-        <input type="text" class="form-control mr-sm-2" name="search" placeholder="Search...">
+    <form class="form-inline mt-4 mb-4" action="/{{ category }}" method="GET">
+        <input type="text" class="form-control mr-sm-2" name="search" placeholder="Search..." value="{{ search_query }}">
         <button type="submit" class="btn btn-primary">Search</button>
     </form>
 
@@ -52,7 +42,8 @@
         <thead>
         <tr>
             <th>Title</th>
-            <th>Link</th>
+            <th>IMDB Link</th>
+            <th>Magnet Link</th>
             <th>Category</th>
             <th>Size</th>
             <th>Seeders</th>
@@ -64,7 +55,12 @@
         {% for torrent in torrents %}
         <tr>
             <td>{{ torrent.title }}</td>
-            <td><a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;">Get Magnet Link</a></td>
+            <td>
+                <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;">Get IMDb Link</a>
+            </td>
+            <td>
+                <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;">Get Magnet Link</a>
+            </td>
             <td>{{ torrent.category }}</td>
             <td>{{ torrent.size }}</td>
             <td>{{ torrent.seeders }}</td>
@@ -87,5 +83,49 @@
     {% endif %}
 
 </div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    function fetchAndCopyMagnetLink(torrentUrl) {
+        $.ajax({
+            url: '/get_magnet_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Torrent added to qBittorrent!');
+                } else {
+                    alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch magnet link:', error);
+                alert('Failed to fetch magnet link. Please try again later.');
+            }
+        });
+    }
+
+    function fetchIMDbLink(torrentUrl) {
+        $.ajax({
+            url: '/get_imdb_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl }),
+            success: function(response) {
+                if (response.success) {
+                    window.open(response.imdb_link, '_blank');
+                } else {
+                    alert('Failed to fetch IMDb link.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch IMDb link:', error);
+                alert('Failed to fetch IMDb link. Please try again later.');
+            }
+        });
+    }
+</script>
 </body>
 </html>

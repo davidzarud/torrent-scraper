@@ -1,8 +1,8 @@
-import os
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from requests.exceptions import RequestException
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, request, jsonify
-from requests.exceptions import RequestException
+import os
 
 app = Flask(__name__)
 
@@ -31,19 +31,6 @@ def login_to_qbittorrent():
     except RequestException as e:
         print(f"Login error: {e}")
         return False
-    return True
-
-def is_session_valid():
-    try:
-        response = session.get(f"{QBITTORRENT_BASE_URL}/api/v2/app/version")
-        response.raise_for_status()
-        return True
-    except RequestException:
-        return False
-
-def ensure_qbittorrent_session():
-    if 'SID' not in session.cookies or not is_session_valid():
-        return login_to_qbittorrent()
     return True
 
 def fetch_html(url):
@@ -80,7 +67,8 @@ def parse_html(html):
                     "size": size,
                     "seeders": seeders,
                     "leechers": leechers,
-                    "date_uploaded": date_uploaded
+                    "date_uploaded": date_uploaded,
+                    "imdb_link": None  # Initially, set IMDb link to None
                 })
 
     return torrents
@@ -99,9 +87,10 @@ def add_torrent_to_qbittorrent(magnet_link):
         print("qBittorrent credentials not set.")
         return False
 
-    if not ensure_qbittorrent_session():
-        print("Failed to login to qBittorrent.")
-        return False
+    if 'SID' not in session.cookies:
+        if not login_to_qbittorrent():
+            print("Failed to login to qBittorrent.")
+            return False
 
     add_torrent_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/add"
     data = {'urls': magnet_link}
@@ -115,6 +104,10 @@ def add_torrent_to_qbittorrent(magnet_link):
 
 @app.route('/')
 def home():
+    return redirect(url_for('home_movies'))
+
+@app.route('/movies')
+def home_movies():
     search_query = request.args.get('search', '')
     page = request.args.get('page', default=1, type=int)
 
@@ -129,25 +122,61 @@ def home():
         else:
             torrents = []
 
-    return render_template('index.html', torrents=torrents, page=page, search_query=search_query)
+    return render_template('index.html', torrents=torrents, page=page, search_query=search_query, category='movies')
+
+@app.route('/tv')
+def home_tv():
+    search_query = request.args.get('search', '')
+    page = request.args.get('page', default=1, type=int)
+
+    if search_query:
+        torrents = search_torrents(search_query)
+        torrents.sort(key=lambda x: x['seeders'], reverse=True)
+    else:
+        page_url = f"{BASE_URL}tv/{page}/"
+        html_content = fetch_html(page_url)
+        if html_content:
+            torrents = parse_html(html_content)
+        else:
+            torrents = []
+
+    return render_template('index.html', torrents=torrents, page=page, search_query=search_query, category='tv')
 
 @app.route('/get_magnet_link', methods=['POST'])
 def get_magnet_link():
-    torrent_url = request.json.get('torrent_url')
+    data = request.get_json()
+    torrent_url = data.get('torrent_url')
     magnet_link = fetch_magnet_link(torrent_url)
     if magnet_link:
         success = add_torrent_to_qbittorrent(magnet_link)
-        return jsonify({'success': success})
+        if success:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to add torrent to qBittorrent'})
     else:
-        return jsonify({'success': False})
+        return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
 
 def search_torrents(query):
-    search_url = f"https://rargb.to/search/?search={query}"
+    search_url = f"{BASE_URL}search/?search={query}"
     html_content = fetch_html(search_url)
     if html_content:
         return parse_html(html_content)
     else:
         return []
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8888)
+@app.route('/get_imdb_link', methods=['POST'])
+def get_imdb_link():
+    data = request.get_json()
+    torrent_url = data.get('torrent_url')
+    if torrent_url:
+        torrent_page_html = fetch_html(torrent_url)
+        if torrent_page_html:
+            torrent_page_soup = BeautifulSoup(torrent_page_html, 'lxml')
+            imdb_anchor = torrent_page_soup.select_one('a[href*="imdb.com/title/"]')
+            if imdb_anchor:
+                imdb_link = imdb_anchor['href']
+                return jsonify({'success': True, 'imdb_link': imdb_link})
+    return jsonify({'success': False})
+
+if __name__ == '__main__':
+    app.run(debug=True)
