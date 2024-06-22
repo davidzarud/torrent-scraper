@@ -87,7 +87,8 @@ def add_torrent_to_qbittorrent(magnet_link):
         print("qBittorrent credentials not set.")
         return False
 
-    if 'SID' not in session.cookies:
+    # Check if session exists and is valid
+    if not is_session_valid():
         if not login_to_qbittorrent():
             print("Failed to login to qBittorrent.")
             return False
@@ -100,6 +101,17 @@ def add_torrent_to_qbittorrent(magnet_link):
         return True
     except RequestException as e:
         print(f"Error adding torrent: {e}")
+        return False
+
+def is_session_valid():
+    try:
+        test_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
+        response = session.get(test_url)
+        response.raise_for_status()
+        if response.text != "Ok.":
+            raise Exception("Session is not valid.")
+        return True
+    except requests.exceptions.RequestException:
         return False
 
 @app.route('/')
