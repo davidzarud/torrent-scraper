@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popular Blu-ray Movies</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        .container {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .movie-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        .movie-item {
+            flex: 0 0 19%;
+            margin-bottom: 20px;
+            text-align: center;
+            background-color: #2c2c2c;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+        .movie-item:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+            transform: scale(1.05);
+        }
+        .movie-item img {
+            width: 100%;
+            height: auto;
+            transition: filter 0.3s ease;
+        }
+        .movie-item:hover img {
+            filter: brightness(1.2);
+        }
+        .pagination {
+            justify-content: center;
+        }
+        .pagination .page-item {
+            margin: 0 2px;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #ff5722;
+            border-color: #ff5722;
+            color: #ffffff;
+        }
+        .pagination .page-link {
+            color: #000000;
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #757575;
+        }
+        .pagination .page-link:hover {
+            color: #ff5722;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <h1 class="mt-4">Popular Blu-ray Movies</h1>
+
+    <div class="movie-grid mt-4">
+        {% for movie in movies %}
+        <div class="movie-item">
+            <a href="{{ url_for('movie_detail', movie_id=movie.id) }}">
+                <img src="https://image.tmdb.org/t/p/w200{{ movie.poster_path }}" alt="{{ movie.title }}">
+                <h5>{{ movie.title }}</h5>
+            </a>
+        </div>
+        {% if loop.index % 5 == 0 %}
+    </div><div class="movie-grid mt-4">
+    {% endif %}
+    {% endfor %}
+</div>
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}">Previous</a></li>
+            {% endif %}
+
+            {% set start_page = page - 5 if page - 5 > 1 else 1 %}
+            {% set end_page = page + 4 if page + 4 < total_pages else total_pages %}
+
+            {% if start_page > 1 %}
+            <li class="page-item"><a class="page-link" href="?page=1">1</a></li>
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+
+            {% if end_page < total_pages %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            <li class="page-item"><a class="page-link" href="?page={{ total_pages }}">{{ total_pages }}</a></li>
+            {% endif %}
+
+            {% if page < total_pages %}
+            <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

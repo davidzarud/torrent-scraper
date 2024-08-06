@@ -4,88 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Torrent Scraper</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            padding-top: 20px;
-        }
-        .container {
-            max-width: 1000px;
-        }
-        .nav-tabs .nav-link.active {
-            background-color: #007bff;
-            color: white !important;
-        }
-    </style>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-<div class="container">
-    <h1 class="mt-4">Torrent Scraper</h1>
+<body class="bg-gray-100">
+<div class="bg-blue-800 text-white">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold">Torrent Scraper</div>
+        <div>
+            <a href="/movies" class="text-lg px-4 py-2 hover:bg-blue-700 rounded {% if category == 'movies' %}bg-blue-600{% endif %}">Movies</a>
+            <a href="/tv" class="text-lg px-4 py-2 hover:bg-blue-700 rounded {% if category == 'tv' %}bg-blue-600{% endif %}">TV Shows</a>
+        </div>
+    </div>
+</div>
 
-    <!-- Navigation Tabs -->
-    <ul class="nav nav-tabs mt-4">
-        <li class="nav-item">
-            <a class="nav-link {% if category == 'movies' %}active{% endif %}" href="/movies">Movies</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {% if category == 'tv' %}active{% endif %}" href="/tv">TV Shows</a>
-        </li>
-    </ul>
-
+<div class="container mx-auto px-4 py-8">
     <!-- Search form -->
-    <form class="form-inline mt-4 mb-4" action="/{{ category }}" method="GET">
-        <input type="text" class="form-control mr-sm-2" name="search" placeholder="Search..." value="{{ search_query }}">
-        <button type="submit" class="btn btn-primary">Search</button>
+    <form class="flex mb-4" action="/{{ category }}" method="GET">
+        <input type="text" class="flex-grow border rounded-l px-4 py-2" name="search" placeholder="Search..." value="{{ search_query }}">
+        <button type="submit" class="bg-blue-800 text-white px-4 py-2 rounded-r">Search</button>
     </form>
 
-    <table class="table table-striped mt-4">
-        <thead>
-        <tr>
-            <th>Title</th>
-            <th>IMDB Link</th>
-            <th>Magnet Link</th>
-            <th>Category</th>
-            <th>Size</th>
-            <th>Seeders</th>
-            <th>Leechers</th>
-            <th>Date Uploaded</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for torrent in torrents %}
-        <tr>
-            <td>{{ torrent.title }}</td>
-            <td>
-                <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;">Get IMDb Link</a>
-            </td>
-            <td>
-                <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;">Get Magnet Link</a>
-            </td>
-            <td>{{ torrent.category }}</td>
-            <td>{{ torrent.size }}</td>
-            <td>{{ torrent.seeders }}</td>
-            <td>{{ torrent.leechers }}</td>
-            <td>{{ torrent.date_uploaded }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+    <!-- Table -->
+    <div class="bg-white shadow-md rounded">
+        <table class="min-w-full table-auto">
+            <thead>
+            <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                <th class="py-3 px-6 text-left">Title</th>
+                <th class="py-3 px-6 text-left">IMDB Link</th>
+                <th class="py-3 px-6 text-left">Magnet Link</th>
+                <th class="py-3 px-6 text-left">Category</th>
+                <th class="py-3 px-6 text-left">Size</th>
+                <th class="py-3 px-6 text-left">Seeders</th>
+                <th class="py-3 px-6 text-left">Leechers</th>
+                <th class="py-3 px-6 text-left">Date Uploaded</th>
+            </tr>
+            </thead>
+            <tbody class="text-gray-600 text-sm font-light">
+            {% for torrent in torrents %}
+            <tr class="border-b border-gray-200 hover:bg-gray-100">
+                <td class="py-3 px-6 text-left whitespace-nowrap">{{ torrent.title }}</td>
+                <td class="py-3 px-6 text-left">
+                    <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get IMDb Link</a>
+                </td>
+                <td class="py-3 px-6 text-left">
+                    <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get Magnet Link</a>
+                </td>
+                <td class="py-3 px-6 text-left">{{ torrent.category }}</td>
+                <td class="py-3 px-6 text-left">{{ torrent.size }}</td>
+                <td class="py-3 px-6 text-left">{{ torrent.seeders }}</td>
+                <td class="py-3 px-6 text-left">{{ torrent.leechers }}</td>
+                <td class="py-3 px-6 text-left">{{ torrent.date_uploaded }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     {% if not search_query %}
-    <nav aria-label="Page navigation">
-        <ul class="pagination">
+    <nav class="mt-4">
+        <ul class="flex justify-center">
             {% if page > 1 %}
-            <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}">Previous</a></li>
+            <li><a href="?page={{ page - 1 }}" class="mx-2 px-4 py-2 bg-blue-800 text-white rounded hover:bg-blue-700">Previous</a></li>
             {% endif %}
-            <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}">Next</a></li>
+            <li><a href="?page={{ page + 1 }}" class="mx-2 px-4 py-2 bg-blue-800 text-white rounded hover:bg-blue-700">Next</a></li>
         </ul>
     </nav>
     {% endif %}
-
 </div>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script>
     function fetchAndCopyMagnetLink(torrentUrl) {
         $.ajax({

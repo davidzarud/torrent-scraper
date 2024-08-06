@@ -11,6 +11,9 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
+TMDB_API_KEY = '6dd8946025483f354ff8987af6cf3980'
+TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+
 QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
 QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
 QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
@@ -77,10 +80,11 @@ def fetch_magnet_link(torrent_url):
     html_content = fetch_html(torrent_url)
     if html_content:
         soup = BeautifulSoup(html_content, 'lxml')
-        magnet_link = soup.select_one('a[href^="magnet:?"]').get('href')
-        return magnet_link
-    else:
-        return None
+        magnet_link = soup.select_one('a[href^="magnet:?"]')
+        if magnet_link:
+            return magnet_link.get('href')
+    return None
+
 
 def add_torrent_to_qbittorrent(magnet_link):
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
@@ -116,25 +120,70 @@ def is_session_valid():
 
 @app.route('/')
 def home():
-    return redirect(url_for('home_movies'))
+    return redirect(url_for('movies'))
 
 @app.route('/movies')
-def home_movies():
-    search_query = request.args.get('search', '')
+def movies():
     page = request.args.get('page', default=1, type=int)
+    movies, total_pages = get_popular_bluray_movies(page)
+    return render_template('movies.html', movies=movies, page=page, total_pages=total_pages)
 
-    if search_query:
-        torrents = search_torrents(search_query)
-        torrents.sort(key=lambda x: x['seeders'], reverse=True)
-    else:
-        page_url = f"{BASE_URL}movies/{page}/"
-        html_content = fetch_html(page_url)
-        if html_content:
-            torrents = parse_html(html_content)
-        else:
-            torrents = []
+def get_popular_bluray_movies(page):
+    url = f"{TMDB_BASE_URL}/discover/movie"
+    params = {
+        'api_key': TMDB_API_KEY,
+        'sort_by': 'popularity.desc',
+        'with_release_type': 5,  # Blu-ray release type
+        'page': page
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+    return data['results'], total_pages
 
-    return render_template('index.html', torrents=torrents, page=page, search_query=search_query, category='movies')
+@app.route('/movie/<int:movie_id>')
+def movie_detail(movie_id):
+    # Fetch movie details from TMDB
+    url = f"{TMDB_BASE_URL}/movie/{movie_id}"
+    params = {'api_key': TMDB_API_KEY}
+    response = requests.get(url, params=params)
+    movie_data = response.json()
+
+    # Extract genre names
+    genres = [genre['name'] for genre in movie_data.get('genres', [])]
+    genre_string = ', '.join(genres)
+
+    # Extract cast information
+    credits_url = f"{TMDB_BASE_URL}/movie/{movie_id}/credits"
+    credits_response = requests.get(credits_url, params=params)
+    credits_data = credits_response.json()
+    cast = [member['name'] for member in credits_data.get('cast', [])[:5]]  # Limit to first 5 cast members
+    cast_string = ', '.join(cast)
+
+    # Format and round user score as a percentage
+    vote_average = movie_data.get('vote_average', 0)
+    user_score_percentage = round(vote_average * 10)  # Convert to percentage and round
+
+    movie = {
+        'title': movie_data.get('title'),
+        'release_date': movie_data.get('release_date'),
+        'poster_path': movie_data.get('poster_path'),
+        'overview': movie_data.get('overview'),
+        'genre': genre_string,
+        'cast': cast_string,
+        'user_score_percentage': user_score_percentage  # User score as percentage
+    }
+
+    # Fetch torrents related to the movie
+    torrents = search_torrents(movie_data.get('title'))
+
+    return render_template('movie_detail.html', movie=movie, torrents=torrents)
+
+def get_movie_details(movie_id):
+    url = f"{TMDB_BASE_URL}/movie/{movie_id}"
+    params = {'api_key': TMDB_API_KEY}
+    response = requests.get(url, params=params)
+    return response.json()
 
 @app.route('/tv')
 def home_tv():
@@ -189,6 +238,7 @@ def get_imdb_link():
                 imdb_link = imdb_anchor['href']
                 return jsonify({'success': True, 'imdb_link': imdb_link})
     return jsonify({'success': False})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
