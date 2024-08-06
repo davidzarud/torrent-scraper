@@ -127,18 +127,10 @@
         <tr>
             <td>{{ torrent.title }}</td>
             <td>
-                {% if torrent.imdb_link %}
-                <a href="{{ torrent.imdb_link }}" target="_blank">IMDB</a>
-                {% else %}
-                N/A
-                {% endif %}
+                <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get IMDb Link</a>
             </td>
             <td>
-                {% if torrent.magnet_link %}
-                <a href="{{ torrent.magnet_link }}" target="_blank">Magnet</a>
-                {% else %}
-                N/A
-                {% endif %}
+                <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get Magnet Link</a>
             </td>
             <td>{{ torrent.category }}</td>
             <td>{{ torrent.size }}</td>
@@ -155,6 +147,46 @@
 </div>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    function fetchAndCopyMagnetLink(torrentUrl) {
+        $.ajax({
+            url: '/get_magnet_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Torrent added to qBittorrent!');
+                } else {
+                    alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch magnet link:', error);
+                alert('Failed to fetch magnet link. Please try again later.');
+            }
+        });
+    }
+
+    function fetchIMDbLink(torrentUrl) {
+        $.ajax({
+            url: '/get_imdb_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl }),
+            success: function(response) {
+                if (response.success) {
+                    window.open(response.imdb_link, '_blank');
+                } else {
+                    alert('Failed to fetch IMDb link.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch IMDb link:', error);
+                alert('Failed to fetch IMDb link. Please try again later.');
+            }
+        });
+    }
+</script>
 </body>
 </html>

@@ -2,9 +2,13 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from requests.exceptions import RequestException
 import requests
 from bs4 import BeautifulSoup
+import logging
+
 import os
 
 app = Flask(__name__)
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 BASE_URL = "https://rargb.to/"
 HEADERS = {
@@ -14,11 +18,16 @@ HEADERS = {
 TMDB_API_KEY = '6dd8946025483f354ff8987af6cf3980'
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
-QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
-QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
-QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
+# QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
+# QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
+# QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
+
+QBITTORRENT_BASE_URL = 'http://192.168.1.194:8080'
+QBITTORRENT_USERNAME = 'admin'
+QBITTORRENT_PASSWORD = 'Dzarud218'
 
 session = requests.Session()
+
 
 def login_to_qbittorrent():
     login_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
@@ -36,6 +45,11 @@ def login_to_qbittorrent():
         return False
     return True
 
+
+# Store the session cookies globally
+qb_cookies = login_to_qbittorrent()
+
+
 def fetch_html(url):
     response = requests.get(url, headers=HEADERS)
     if response.status_code == 200:
@@ -43,6 +57,7 @@ def fetch_html(url):
     else:
         print(f"Failed to retrieve content: {response.status_code}")
         return None
+
 
 def parse_html(html):
     soup = BeautifulSoup(html, 'lxml')
@@ -76,14 +91,15 @@ def parse_html(html):
 
     return torrents
 
+
 def fetch_magnet_link(torrent_url):
     html_content = fetch_html(torrent_url)
     if html_content:
         soup = BeautifulSoup(html_content, 'lxml')
-        magnet_link = soup.select_one('a[href^="magnet:?"]')
-        if magnet_link:
-            return magnet_link.get('href')
-    return None
+        magnet_link = soup.select_one('a[href^="magnet:?"]').get('href')
+        return magnet_link
+    else:
+        return None
 
 
 def add_torrent_to_qbittorrent(magnet_link):
@@ -107,6 +123,7 @@ def add_torrent_to_qbittorrent(magnet_link):
         print(f"Error adding torrent: {e}")
         return False
 
+
 def is_session_valid():
     try:
         test_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
@@ -118,15 +135,18 @@ def is_session_valid():
     except requests.exceptions.RequestException:
         return False
 
+
 @app.route('/')
 def home():
     return redirect(url_for('movies'))
+
 
 @app.route('/movies')
 def movies():
     page = request.args.get('page', default=1, type=int)
     movies, total_pages = get_popular_bluray_movies(page)
     return render_template('movies.html', movies=movies, page=page, total_pages=total_pages)
+
 
 def get_popular_bluray_movies(page):
     url = f"{TMDB_BASE_URL}/discover/movie"
@@ -140,6 +160,7 @@ def get_popular_bluray_movies(page):
     data = response.json()
     total_pages = data.get('total_pages', 1)
     return data['results'], total_pages
+
 
 @app.route('/movie/<int:movie_id>')
 def movie_detail(movie_id):
@@ -175,15 +196,17 @@ def movie_detail(movie_id):
     }
 
     # Fetch torrents related to the movie
-    torrents = search_torrents(movie_data.get('title'))
+    torrents = search_torrents(f"{movie_data.get('title')} {movie_data.get('release_date')[:4]}")
 
     return render_template('movie_detail.html', movie=movie, torrents=torrents)
+
 
 def get_movie_details(movie_id):
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
     params = {'api_key': TMDB_API_KEY}
     response = requests.get(url, params=params)
     return response.json()
+
 
 @app.route('/tv')
 def home_tv():
@@ -203,6 +226,7 @@ def home_tv():
 
     return render_template('index.html', torrents=torrents, page=page, search_query=search_query, category='tv')
 
+
 @app.route('/get_magnet_link', methods=['POST'])
 def get_magnet_link():
     data = request.get_json()
@@ -217,13 +241,16 @@ def get_magnet_link():
     else:
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
 
+
 def search_torrents(query):
+    logging.info(f"Searching torrents with query: {query}")
     search_url = f"{BASE_URL}search/?search={query}"
     html_content = fetch_html(search_url)
     if html_content:
         return parse_html(html_content)
     else:
         return []
+
 
 @app.route('/get_imdb_link', methods=['POST'])
 def get_imdb_link():
