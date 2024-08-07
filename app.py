@@ -213,30 +213,33 @@ def get_movie_details(movie_id):
 
 @app.route('/show/<int:show_id>')
 def show_detail(show_id):
+    # Fetch show details
     url = f"{TMDB_BASE_URL}/tv/{show_id}"
     params = {'api_key': TMDB_API_KEY}
     response = requests.get(url, params=params)
     show_data = response.json()
 
-    genres = [genre['name'] for genre in show_data.get('genres', [])]
-    genre_string = ', '.join(genres)
+    # Fetch seasons and episodes
+    seasons = show_data.get('seasons', [])
+    seasons = [season for season in seasons if season.get('season_number') != 0]  # Filter out season 0
 
-    credits_url = f"{TMDB_BASE_URL}/tv/{show_id}/credits"
-    credits_response = requests.get(credits_url, params=params)
-    credits_data = credits_response.json()
-    cast = [member['name'] for member in credits_data.get('cast', [])[:5]]
-    cast_string = ', '.join(cast)
+    for season in seasons:
+        season_number = season.get('season_number')
+        episodes_url = f"{TMDB_BASE_URL}/tv/{show_id}/season/{season_number}"
+        episodes_response = requests.get(episodes_url, params=params)
+        episodes_data = episodes_response.json()
+        season['episodes'] = [episode['episode_number'] for episode in episodes_data.get('episodes', [])]
 
     show = {
         'name': show_data.get('name'),
         'release_date': show_data.get('first_air_date'),
         'poster_path': show_data.get('poster_path'),
         'overview': show_data.get('overview'),
-        'genre': genre_string,
-        'cast': cast_string
+        'genre': ', '.join([genre['name'] for genre in show_data.get('genres', [])]),
+        'cast': ', '.join([member['name'] for member in show_data.get('credits', {}).get('cast', [])[:5]])
     }
 
-    return render_template('show_detail.html', show=show)
+    return render_template('show_detail.html', show=show, seasons=seasons)
 
 
 @app.route('/tv')
