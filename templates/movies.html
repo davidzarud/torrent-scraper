@@ -10,6 +10,30 @@
             background-color: #121212;
             color: #e0e0e0;
         }
+        .top-bar {
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .top-bar h1 {
+            margin: 0;
+            color: #e0e0e0;
+        }
+        .top-bar .btn {
+            color: #e0e0e0;
+            background-color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 0 5px;
+            transition: background-color 0.3s;
+        }
+        .top-bar .btn:hover {
+            background-color: #ff5722;
+        }
         .container {
             background-color: #1e1e1e;
             border-radius: 8px;
@@ -65,9 +89,16 @@
     </style>
 </head>
 <body>
-<div class="container mt-4">
-    <h1 class="mt-4">Popular Blu-ray Movies</h1>
+<div class="top-bar">
+    <h1>Torrent Downloader</h1>
+    <div>
+        <a href="{{ url_for('movies') }}" class="btn">Movies</a>
+        <a href="{{ url_for('home_tv') }}" class="btn">TV Shows</a>
+    </div>
+</div>
 
+<div class="container mt-4">
+    <h2 class="mt-4">Popular Blu-ray Movies</h2>
     <div class="movie-grid mt-4">
         {% for movie in movies %}
         <div class="movie-item">
@@ -116,48 +147,5 @@
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<script>
-    function fetchIMDbLink(torrentUrl, elementId) {
-        $.ajax({
-            url: '/get_imdb_link',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ 'torrent_url': torrentUrl }),
-            success: function(response) {
-                if (response.success) {
-                    document.getElementById(elementId).href = response.imdb_link;
-                    document.getElementById(elementId).textContent = 'IMDB Link';
-                } else {
-                    alert('Failed to fetch IMDb link.');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Failed to fetch IMDb link:', error);
-                alert('Failed to fetch IMDb link. Please try again later.');
-            }
-        });
-    }
-
-    function fetchMagnetLink(torrentUrl, elementId) {
-        $.ajax({
-            url: '/get_magnet_link',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ 'torrent_url': torrentUrl }),
-            success: function(response) {
-                if (response.success) {
-                    document.getElementById(elementId).href = response.magnet_link;
-                    document.getElementById(elementId).textContent = 'Magnet Link';
-                } else {
-                    alert('Failed to fetch magnet link.');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Failed to fetch magnet link:', error);
-                alert('Failed to fetch magnet link. Please try again later.');
-            }
-        });
-    }
-</script>
 </body>
 </html>

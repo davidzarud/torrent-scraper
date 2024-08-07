@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ show.name }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        .container {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .movie-detail {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        .movie-poster {
+            flex: 0 0 250px; /* Adjusted size */
+            margin-right: 20px;
+        }
+        .movie-poster img {
+            width: 100%;
+            border-radius: 8px;
+        }
+        .movie-metadata {
+            flex: 1;
+        }
+        .movie-metadata h2 {
+            margin-top: 0;
+        }
+        .torrent-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .torrent-table th, .torrent-table td {
+            border: 1px solid #333;
+            padding: 10px;
+            text-align: left;
+        }
+        .torrent-table th {
+            background-color: #333;
+        }
+        .torrent-table tbody tr:nth-child(odd) {
+            background-color: #2c2c2c;
+        }
+        .torrent-table tbody tr:nth-child(even) {
+            background-color: #1e1e1e;
+        }
+        .torrent-table tbody tr:hover {
+            background-color: #444;
+        }
+        .pagination {
+            justify-content: center;
+        }
+        .pagination .page-item {
+            margin: 0 2px;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #ff5722;
+            border-color: #ff5722;
+            color: #ffffff;
+        }
+        .pagination .page-link {
+            color: #000000;
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #757575;
+        }
+        .pagination .page-link:hover {
+            color: #ff5722;
+        }
+        .return-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: color 0.3s;
+            margin-bottom: 20px;
+        }
+        .return-btn:hover {
+            color: #ff5722;
+        }
+    </style>
+</head>
+<body>
+<div class="top-bar">
+    <h1>Torrent Downloader</h1>
+    <div>
+        <a href="{{ url_for('movies') }}" class="btn">Movies</a>
+        <a href="{{ url_for('home_tv') }}" class="btn">TV Shows</a>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <button class="return-btn" onclick="window.history.back();">
+        &larr;
+    </button>
+    <div class="movie-detail">
+        <div class="movie-poster">
+            <img src="https://image.tmdb.org/t/p/w200{{ show.poster_path }}" alt="{{ show.name }}">
+        </div>
+        <div class="movie-metadata">
+            <h2>{{ show.name }}</h2>
+            <p><strong>Release Date:</strong> {{ show.release_date }}</p>
+            <p><strong>Genres:</strong> {{ show.genre }}</p>
+            <p><strong>Cast:</strong> {{ show.cast }}</p>
+            <p><strong>Overview:</strong> {{ show.overview }}</p>
+        </div>
+    </div>
+
+    <h3 class="mt-4">Torrents</h3>
+    <div class="movie-grid mt-4">
+        {% for torrent in torrents %}
+        <div class="movie-item">
+            <a href="{{ torrent.link }}" target="_blank">
+                <h5>{{ torrent.title }}</h5>
+                <p>Category: {{ torrent.category }}</p>
+                <p>Size: {{ torrent.size }}</p>
+                <p>Seeders: {{ torrent.seeders }} | Leechers: {{ torrent.leechers }}</p>
+                <p>Uploaded: {{ torrent.date_uploaded }}</p>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

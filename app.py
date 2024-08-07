@@ -26,6 +26,7 @@ QBITTORRENT_PASSWORD = 'Dzarud218'
 
 session = requests.Session()
 
+
 def login_to_qbittorrent():
     login_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
     data = {
@@ -42,7 +43,9 @@ def login_to_qbittorrent():
         return False
     return True
 
+
 qb_cookies = login_to_qbittorrent()
+
 
 def fetch_html(url):
     response = requests.get(url, headers=HEADERS)
@@ -51,6 +54,7 @@ def fetch_html(url):
     else:
         print(f"Failed to retrieve content: {response.status_code}")
         return None
+
 
 def parse_html(html):
     soup = BeautifulSoup(html, 'lxml')
@@ -84,6 +88,7 @@ def parse_html(html):
 
     return torrents
 
+
 def fetch_magnet_link(torrent_url):
     html_content = fetch_html(torrent_url)
     if html_content:
@@ -92,6 +97,7 @@ def fetch_magnet_link(torrent_url):
         return magnet_link
     else:
         return None
+
 
 def add_torrent_to_qbittorrent(magnet_link):
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
@@ -113,6 +119,7 @@ def add_torrent_to_qbittorrent(magnet_link):
         print(f"Error adding torrent: {e}")
         return False
 
+
 def is_session_valid():
     try:
         test_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
@@ -124,15 +131,18 @@ def is_session_valid():
     except requests.exceptions.RequestException:
         return False
 
+
 @app.route('/')
 def home():
     return redirect(url_for('movies'))
+
 
 @app.route('/movies')
 def movies():
     page = request.args.get('page', default=1, type=int)
     movies, total_pages = get_popular_bluray_movies(page)
     return render_template('movies.html', movies=movies, page=page, total_pages=total_pages)
+
 
 def get_popular_bluray_movies(page):
     url = f"{TMDB_BASE_URL}/discover/movie"
@@ -146,6 +156,25 @@ def get_popular_bluray_movies(page):
     data = response.json()
     total_pages = data.get('total_pages', 1)
     return data['results'], total_pages
+
+
+def get_popular_running_shows(page):
+    url = f"{TMDB_BASE_URL}/tv/popular"
+    params = {
+        'api_key': TMDB_API_KEY,
+        'page': page
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+
+    # Filter out anime shows based on genre
+    shows = data['results']
+    filtered_shows = [show for show in shows if
+                      not any(genre['name'] in ['Animation', 'Anime'] for genre in show.get('genres', []))]
+
+    return filtered_shows, total_pages
+
 
 @app.route('/movie/<int:movie_id>')
 def movie_detail(movie_id):
@@ -180,29 +209,48 @@ def movie_detail(movie_id):
 
     return render_template('movie_detail.html', movie=movie, torrents=torrents)
 
+
 def get_movie_details(movie_id):
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
     params = {'api_key': TMDB_API_KEY}
     response = requests.get(url, params=params)
     return response.json()
 
+
+@app.route('/show/<int:show_id>')
+def show_detail(show_id):
+    url = f"{TMDB_BASE_URL}/tv/{show_id}"
+    params = {'api_key': TMDB_API_KEY}
+    response = requests.get(url, params=params)
+    show_data = response.json()
+
+    genres = [genre['name'] for genre in show_data.get('genres', [])]
+    genre_string = ', '.join(genres)
+
+    credits_url = f"{TMDB_BASE_URL}/tv/{show_id}/credits"
+    credits_response = requests.get(credits_url, params=params)
+    credits_data = credits_response.json()
+    cast = [member['name'] for member in credits_data.get('cast', [])[:5]]
+    cast_string = ', '.join(cast)
+
+    show = {
+        'name': show_data.get('name'),
+        'release_date': show_data.get('first_air_date'),
+        'poster_path': show_data.get('poster_path'),
+        'overview': show_data.get('overview'),
+        'genre': genre_string,
+        'cast': cast_string
+    }
+
+    return render_template('show_detail.html', show=show)
+
+
 @app.route('/tv')
 def home_tv():
-    search_query = request.args.get('search', '')
     page = request.args.get('page', default=1, type=int)
+    shows, total_pages = get_popular_running_shows(page)
+    return render_template('tvshows.html', shows=shows, page=page, total_pages=total_pages)
 
-    if search_query:
-        torrents = search_torrents(search_query)
-        torrents.sort(key=lambda x: x['seeders'], reverse=True)
-    else:
-        page_url = f"{BASE_URL}tv/{page}/"
-        html_content = fetch_html(page_url)
-        if html_content:
-            torrents = parse_html(html_content)
-        else:
-            torrents = []
-
-    return render_template('index.html', torrents=torrents, page=page, search_query=search_query, category='tv')
 
 @app.route('/get_magnet_link', methods=['POST'])
 def get_magnet_link():
@@ -217,6 +265,7 @@ def get_magnet_link():
             return jsonify({'success': False, 'error': 'Failed to add torrent to qBittorrent'})
     else:
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
+
 
 def search_torrents(query):
     logging.info(f"Searching torrents with query: {query}")
@@ -233,6 +282,7 @@ def search_torrents(query):
     all_torrents.sort(key=lambda torrent: torrent['seeders'], reverse=True)
     return all_torrents
 
+
 @app.route('/get_imdb_link', methods=['POST'])
 def get_imdb_link():
     data = request.get_json()
@@ -246,6 +296,7 @@ def get_imdb_link():
                 imdb_link = imdb_link_tag['href']
                 return jsonify({'imdb_link': imdb_link})
     return jsonify({'imdb_link': None})
+
 
 if __name__ == '__main__':
     app.run(debug=True)

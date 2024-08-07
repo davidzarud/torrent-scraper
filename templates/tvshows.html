@@ -3,54 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TV Shows</title>
+    <title>Popular TV Shows</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
             background-color: #121212;
             color: #e0e0e0;
         }
+        .top-bar {
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .top-bar h1 {
+            margin: 0;
+            color: #e0e0e0;
+        }
+        .top-bar .btn {
+            color: #e0e0e0;
+            background-color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 0 5px;
+            transition: background-color 0.3s;
+        }
+        .top-bar .btn:hover {
+            background-color: #ff5722;
+        }
         .container {
             background-color: #1e1e1e;
             border-radius: 8px;
             padding: 20px;
         }
-        .top-bar {
-            background-color: #333;
-            padding: 10px;
+        .movie-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        .movie-item {
+            flex: 0 0 19%;
+            margin-bottom: 20px;
             text-align: center;
+            background-color: #2c2c2c;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
         }
-        .top-bar h1 {
-            margin: 0;
-            font-size: 24px;
-            color: #e0e0e0;
+        .movie-item:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+            transform: scale(1.05);
         }
-        .top-bar .nav-btn {
-            margin-left: 10px;
-            font-size: 18px;
-            color: #e0e0e0;
-            cursor: pointer;
-            transition: color 0.3s;
+        .movie-item img {
+            width: 100%;
+            height: auto;
+            transition: filter 0.3s ease;
         }
-        .top-bar .nav-btn:hover {
+        .movie-item:hover img {
+            filter: brightness(1.2);
+        }
+        .pagination {
+            justify-content: center;
+        }
+        .pagination .page-item {
+            margin: 0 2px;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #ff5722;
+            border-color: #ff5722;
+            color: #ffffff;
+        }
+        .pagination .page-link {
+            color: #000000;
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #757575;
+        }
+        .pagination .page-link:hover {
             color: #ff5722;
-        }
-        .content {
-            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 <div class="top-bar">
-    <h1>Movies & TV Shows</h1>
-    <button class="nav-btn" onclick="window.location.href='/movies'">Movies</button>
-    <button class="nav-btn" onclick="window.location.href='/tvshows'">TV Shows</button>
-</div>
-<div class="container mt-4">
-    <div class="content">
-        <h2>TV Shows</h2>
-        <p>No TV shows data available yet.</p>
+    <h1>Torrent Downloader</h1>
+    <div>
+        <a href="{{ url_for('movies') }}" class="btn">Movies</a>
+        <a href="{{ url_for('home_tv') }}" class="btn">TV Shows</a>
     </div>
 </div>
+
+<div class="container mt-4">
+    <h2 class="mt-4">Popular Running TV Shows</h2>
+    <div class="movie-grid mt-4">
+        {% for show in shows %}
+        <div class="movie-item">
+            <a href="{{ url_for('show_detail', show_id=show.id) }}">
+                <img src="https://image.tmdb.org/t/p/w200{{ show.poster_path }}" alt="{{ show.name }}">
+                <h5>{{ show.name }}</h5>
+            </a>
+        </div>
+        {% if loop.index % 5 == 0 %}
+    </div><div class="movie-grid mt-4">
+    {% endif %}
+    {% endfor %}
+</div>
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}">Previous</a></li>
+            {% endif %}
+
+            {% set start_page = page - 5 if page - 5 > 1 else 1 %}
+            {% set end_page = page + 4 if page + 4 < total_pages else total_pages %}
+
+            {% if start_page > 1 %}
+            <li class="page-item"><a class="page-link" href="?page=1">1</a></li>
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+
+            {% if end_page < total_pages %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            <li class="page-item"><a class="page-link" href="?page={{ total_pages }}">{{ total_pages }}</a></li>
+            {% endif %}
+
+            {% if page < total_pages %}
+            <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
