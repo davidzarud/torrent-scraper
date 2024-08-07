@@ -159,7 +159,7 @@ def get_popular_bluray_movies(page):
 
 
 def get_popular_running_shows(page):
-    url = f"{TMDB_BASE_URL}/tv/popular"
+    url = f"{TMDB_BASE_URL}/trending/tv/week"
     params = {
         'api_key': TMDB_API_KEY,
         'page': page
@@ -167,13 +167,7 @@ def get_popular_running_shows(page):
     response = requests.get(url, params=params)
     data = response.json()
     total_pages = data.get('total_pages', 1)
-
-    # Filter out anime shows based on genre
-    shows = data['results']
-    filtered_shows = [show for show in shows if
-                      not any(genre['name'] in ['Animation', 'Anime'] for genre in show.get('genres', []))]
-
-    return filtered_shows, total_pages
+    return data['results'], total_pages
 
 
 @app.route('/movie/<int:movie_id>')
