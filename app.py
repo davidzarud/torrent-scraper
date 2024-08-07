@@ -4,8 +4,6 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 
-import os
-
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,7 +26,6 @@ QBITTORRENT_PASSWORD = 'Dzarud218'
 
 session = requests.Session()
 
-
 def login_to_qbittorrent():
     login_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
     data = {
@@ -45,10 +42,7 @@ def login_to_qbittorrent():
         return False
     return True
 
-
-# Store the session cookies globally
 qb_cookies = login_to_qbittorrent()
-
 
 def fetch_html(url):
     response = requests.get(url, headers=HEADERS)
@@ -57,7 +51,6 @@ def fetch_html(url):
     else:
         print(f"Failed to retrieve content: {response.status_code}")
         return None
-
 
 def parse_html(html):
     soup = BeautifulSoup(html, 'lxml')
@@ -91,7 +84,6 @@ def parse_html(html):
 
     return torrents
 
-
 def fetch_magnet_link(torrent_url):
     html_content = fetch_html(torrent_url)
     if html_content:
@@ -101,13 +93,11 @@ def fetch_magnet_link(torrent_url):
     else:
         return None
 
-
 def add_torrent_to_qbittorrent(magnet_link):
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
         return False
 
-    # Check if session exists and is valid
     if not is_session_valid():
         if not login_to_qbittorrent():
             print("Failed to login to qBittorrent.")
@@ -123,7 +113,6 @@ def add_torrent_to_qbittorrent(magnet_link):
         print(f"Error adding torrent: {e}")
         return False
 
-
 def is_session_valid():
     try:
         test_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
@@ -135,11 +124,9 @@ def is_session_valid():
     except requests.exceptions.RequestException:
         return False
 
-
 @app.route('/')
 def home():
     return redirect(url_for('movies'))
-
 
 @app.route('/movies')
 def movies():
@@ -147,13 +134,12 @@ def movies():
     movies, total_pages = get_popular_bluray_movies(page)
     return render_template('movies.html', movies=movies, page=page, total_pages=total_pages)
 
-
 def get_popular_bluray_movies(page):
     url = f"{TMDB_BASE_URL}/discover/movie"
     params = {
         'api_key': TMDB_API_KEY,
         'sort_by': 'popularity.desc',
-        'with_release_type': 5,  # Blu-ray release type
+        'with_release_type': 5,
         'page': page
     }
     response = requests.get(url, params=params)
@@ -161,29 +147,24 @@ def get_popular_bluray_movies(page):
     total_pages = data.get('total_pages', 1)
     return data['results'], total_pages
 
-
 @app.route('/movie/<int:movie_id>')
 def movie_detail(movie_id):
-    # Fetch movie details from TMDB
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
     params = {'api_key': TMDB_API_KEY}
     response = requests.get(url, params=params)
     movie_data = response.json()
 
-    # Extract genre names
     genres = [genre['name'] for genre in movie_data.get('genres', [])]
     genre_string = ', '.join(genres)
 
-    # Extract cast information
     credits_url = f"{TMDB_BASE_URL}/movie/{movie_id}/credits"
     credits_response = requests.get(credits_url, params=params)
     credits_data = credits_response.json()
-    cast = [member['name'] for member in credits_data.get('cast', [])[:5]]  # Limit to first 5 cast members
+    cast = [member['name'] for member in credits_data.get('cast', [])[:5]]
     cast_string = ', '.join(cast)
 
-    # Format and round user score as a percentage
     vote_average = movie_data.get('vote_average', 0)
-    user_score_percentage = round(vote_average * 10)  # Convert to percentage and round
+    user_score_percentage = round(vote_average * 10)
 
     movie = {
         'title': movie_data.get('title'),
@@ -192,21 +173,18 @@ def movie_detail(movie_id):
         'overview': movie_data.get('overview'),
         'genre': genre_string,
         'cast': cast_string,
-        'user_score_percentage': user_score_percentage  # User score as percentage
+        'user_score_percentage': user_score_percentage
     }
 
-    # Fetch torrents related to the movie
     torrents = search_torrents(f"{movie_data.get('title')} {movie_data.get('release_date')[:4]}")
 
     return render_template('movie_detail.html', movie=movie, torrents=torrents)
-
 
 def get_movie_details(movie_id):
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
     params = {'api_key': TMDB_API_KEY}
     response = requests.get(url, params=params)
     return response.json()
-
 
 @app.route('/tv')
 def home_tv():
@@ -226,7 +204,6 @@ def home_tv():
 
     return render_template('index.html', torrents=torrents, page=page, search_query=search_query, category='tv')
 
-
 @app.route('/get_magnet_link', methods=['POST'])
 def get_magnet_link():
     data = request.get_json()
@@ -241,16 +218,20 @@ def get_magnet_link():
     else:
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
 
-
 def search_torrents(query):
     logging.info(f"Searching torrents with query: {query}")
-    search_url = f"{BASE_URL}search/?search={query}"
-    html_content = fetch_html(search_url)
-    if html_content:
-        return parse_html(html_content)
-    else:
-        return []
+    all_torrents = []
+    for page in range(1, 4):  # Fetch results from the first 3 pages
+        search_url = f"{BASE_URL}search/{page}/?search={query}"
+        html_content = fetch_html(search_url)
+        if html_content:
+            all_torrents.extend(parse_html(html_content))
+        else:
+            break
 
+    # Sort torrents by the number of seeders in descending order
+    all_torrents.sort(key=lambda torrent: torrent['seeders'], reverse=True)
+    return all_torrents
 
 @app.route('/get_imdb_link', methods=['POST'])
 def get_imdb_link():
@@ -259,13 +240,12 @@ def get_imdb_link():
     if torrent_url:
         torrent_page_html = fetch_html(torrent_url)
         if torrent_page_html:
-            torrent_page_soup = BeautifulSoup(torrent_page_html, 'lxml')
-            imdb_anchor = torrent_page_soup.select_one('a[href*="imdb.com/title/"]')
-            if imdb_anchor:
-                imdb_link = imdb_anchor['href']
-                return jsonify({'success': True, 'imdb_link': imdb_link})
-    return jsonify({'success': False})
-
+            soup = BeautifulSoup(torrent_page_html, 'lxml')
+            imdb_link_tag = soup.find('a', href=True, text='IMDb')
+            if imdb_link_tag:
+                imdb_link = imdb_link_tag['href']
+                return jsonify({'imdb_link': imdb_link})
+    return jsonify({'imdb_link': None})
 
 if __name__ == '__main__':
     app.run(debug=True)

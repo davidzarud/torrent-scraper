@@ -32,6 +32,9 @@
         .movie-metadata {
             flex: 1;
         }
+        .table-responsive {
+            overflow-x: auto;
+        }
         .torrent-table {
             width: 100%;
             border-collapse: collapse;
@@ -109,38 +112,40 @@
 
     {% if torrents %}
     <h2>Torrents</h2>
-    <table class="torrent-table">
-        <thead>
-        <tr>
-            <th>Title</th>
-            <th>IMDB Link</th>
-            <th>Magnet Link</th>
-            <th>Category</th>
-            <th>Size</th>
-            <th>Seeders</th>
-            <th>Leechers</th>
-            <th>Date Uploaded</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for torrent in torrents %}
-        <tr>
-            <td>{{ torrent.title }}</td>
-            <td>
-                <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get IMDb Link</a>
-            </td>
-            <td>
-                <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get Magnet Link</a>
-            </td>
-            <td>{{ torrent.category }}</td>
-            <td>{{ torrent.size }}</td>
-            <td>{{ torrent.seeders }}</td>
-            <td>{{ torrent.leechers }}</td>
-            <td>{{ torrent.date_uploaded }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="torrent-table">
+            <thead>
+            <tr>
+                <th>Title</th>
+                <th>IMDB Link</th>
+                <th>Magnet Link</th>
+                <th>Category</th>
+                <th>Size</th>
+                <th>Seeders</th>
+                <th>Leechers</th>
+                <th>Date Uploaded</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for torrent in torrents %}
+            <tr>
+                <td>{{ torrent.title }}</td>
+                <td>
+                    <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get IMDb Link</a>
+                </td>
+                <td>
+                    <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get Magnet Link</a>
+                </td>
+                <td>{{ torrent.category }}</td>
+                <td>{{ torrent.size }}</td>
+                <td>{{ torrent.seeders }}</td>
+                <td>{{ torrent.leechers }}</td>
+                <td>{{ torrent.date_uploaded }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
     <p>No torrents found for this movie.</p>
     {% endif %}
