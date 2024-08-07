@@ -264,6 +264,15 @@ def get_magnet_link():
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
 
 
+@app.route('/search_torrents')
+def search_torrents_route():
+    query = request.args.get('query')
+    if query:
+        torrents = search_torrents(query)
+        return jsonify({'torrents': torrents})
+    return jsonify({'torrents': []})
+
+
 def search_torrents(query):
     logging.info(f"Searching torrents with query: {query}")
     all_torrents = []
