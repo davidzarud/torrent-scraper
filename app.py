@@ -264,6 +264,61 @@ def get_magnet_link():
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
 
 
+@app.route('/search_movies')
+def search_movies():
+    query = request.args.get('query', '')
+    if query:
+        movies_result = search_movies_by_name(query)
+        return render_template('movies.html', movies=movies_result)
+    return render_template('movies.html', movies=[], page=1, total_pages=1)
+
+
+@app.route('/search_tvshows')
+def search_tvshows():
+    query = request.args.get('query', '')
+    if query:
+        shows_result = search_tvshows_by_name(query)
+        return render_template('tvshows.html', shows=shows_result)
+    return render_template('tvshows.html', shows=[], page=1, total_pages=1)
+
+
+def search_movies_by_name(query):
+    url = f'https://api.themoviedb.org/3/search/movie'
+    params = {
+        'api_key': TMDB_API_KEY,
+        'query': query,
+        'language': 'en-US',
+        'page': 1,
+        'include_adult': False
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        return data.get('results', [])
+    else:
+        print(f"Error: Unable to fetch movies from TMDb. Status code: {response.status_code}")
+        return []
+
+
+def search_tvshows_by_name(query):
+    url = f'https://api.themoviedb.org/3/search/tv'
+    params = {
+        'api_key': TMDB_API_KEY,
+        'query': query,
+        'language': 'en-US',
+        'page': 1
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        return data.get('results', [])
+    else:
+        print(f"Error: Unable to fetch TV shows from TMDb. Status code: {response.status_code}")
+        return []
+
+
 @app.route('/search_torrents')
 def search_torrents_route():
     query = request.args.get('query')

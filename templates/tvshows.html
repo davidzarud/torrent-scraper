@@ -92,6 +92,11 @@
 <div class="top-bar">
     <h1>Torrent Downloader</h1>
     <div>
+        <form action="{{ url_for('search_tvshows') }}" method="GET" style="display: inline;">
+            <input type="text" name="query" placeholder="Search TV Shows" class="form-control d-inline-block"
+                   style="width: 200px;">
+            <button type="submit" class="btn">Search</button>
+        </form>
         <a href="{{ url_for('movies') }}" class="btn">Movies</a>
         <a href="{{ url_for('home_tv') }}" class="btn">TV Shows</a>
     </div>
@@ -108,41 +113,59 @@
             </a>
         </div>
         {% if loop.index % 5 == 0 %}
-    </div><div class="movie-grid mt-4">
-    {% endif %}
-    {% endfor %}
-</div>
+    </div>
+    <div class="movie-grid mt-4">
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    {% set total_pages = total_pages if total_pages is defined else 1 %}
+    {% set page = page if page is defined else 1 %}
 
     <nav aria-label="Page navigation">
         <ul class="pagination">
             {% if page > 1 %}
-            <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}">Previous</a></li>
+            <li class="page-item">
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ page - 1 }}">Previous</a>
+            </li>
             {% endif %}
 
             {% set start_page = page - 5 if page - 5 > 1 else 1 %}
             {% set end_page = page + 4 if page + 4 < total_pages else total_pages %}
 
             {% if start_page > 1 %}
-            <li class="page-item"><a class="page-link" href="?page=1">1</a></li>
-            <li class="page-item disabled"><span class="page-link">...</span></li>
+            <li class="page-item">
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page=1">1</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
             {% endif %}
 
             {% for p in range(start_page, end_page + 1) %}
             <li class="page-item {% if p == page %}active{% endif %}">
-                <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ p }}">{{ p }}</a>
             </li>
             {% endfor %}
 
             {% if end_page < total_pages %}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
-            <li class="page-item"><a class="page-link" href="?page={{ total_pages }}">{{ total_pages }}</a></li>
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ total_pages }}">{{ total_pages
+                    }}</a>
+            </li>
             {% endif %}
 
             {% if page < total_pages %}
-            <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}">Next</a></li>
+            <li class="page-item">
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ page + 1 }}">Next</a>
+            </li>
             {% endif %}
         </ul>
     </nav>
+
 </div>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
