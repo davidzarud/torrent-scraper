@@ -98,6 +98,23 @@
         .return-btn:hover {
             color: #ff5722;
         }
+        .filter-toggles {
+            margin-top: 20px;
+        }
+        .filter-toggles .btn {
+            margin-right: 5px;
+            color: #e0e0e0;
+            background-color: #333;
+            border: none;
+            transition: background-color 0.3s;
+        }
+        .filter-toggles .btn.selected {
+            background-color: #ff5722;
+            color: #ffffff;
+        }
+        .filter-toggles .btn:hover {
+            background-color: #555;
+        }
     </style>
 </head>
 <body>
@@ -183,7 +200,7 @@
         episodesContainer.classList.remove('hidden');
     }
 
-     function loadTorrents(query) {
+    function loadTorrents(query) {
         const torrentsContainer = document.querySelector('#torrents');
         torrentsContainer.innerHTML = '<p>Loading torrents...</p>'; // Show loading message
 
@@ -200,6 +217,11 @@
                 if (data.torrents && data.torrents.length > 0) {
                     let tableHtml = `
                         <h2>Torrents</h2>
+                        <div class="filter-toggles">
+                            <button class="btn" title="hdr" id="hdr-toggle">HDR</button>
+                            <button class="btn" title="2160" id="4k-toggle">4K</button>
+                            <button class="btn" title="1080" id="fullhd-toggle">Full HD</button>
+                        </div>
                         <div class="table-responsive">
                             <table class="torrent-table">
                                 <thead>
@@ -218,7 +240,7 @@
                     `;
                     data.torrents.forEach(torrent => {
                         tableHtml += `
-                            <tr>
+                            <tr class="torrent-item" data-title="${torrent.title.toLowerCase()}">
                                 <td>${torrent.title}</td>
                                 <td>
                                     <a href="#" onclick="fetchIMDbLink('${torrent.link}'); return false;">Get IMDb Link</a>
@@ -236,56 +258,50 @@
                     });
                     tableHtml += `</tbody></table></div>`;
                     torrentsContainer.innerHTML = tableHtml;
+
+                    // Add click event listeners to filter toggles
+                    document.querySelectorAll('.filter-toggles .btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            btn.classList.toggle('selected');
+                            filterTorrents();
+                        });
+                    });
+
+                    // Initial filter
+                    filterTorrents();
                 } else {
-                    torrentsContainer.innerHTML = '<p>No torrents found for this episode.</p>';
+                    torrentsContainer.innerHTML = '<p>No torrents found</p>';
                 }
             })
             .catch(error => {
-                torrentsContainer.innerHTML = '<p>Failed to load torrents.</p>';
                 console.error('Error fetching torrents:', error);
+                torrentsContainer.innerHTML = '<p>Error loading torrents</p>';
             });
     }
 
-    function fetchAndCopyMagnetLink(torrentUrl) {
-        $.ajax({
-            url: '/get_magnet_link',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ 'torrent_url': torrentUrl }),
-            success: function(response) {
-                if (response.success) {
-                    alert('Torrent added to qBittorrent!');
-                } else {
-                    alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Failed to fetch magnet link:', error);
-                alert('Failed to fetch magnet link. Please try again later.');
-            }
-        });
+    function fetchIMDbLink(torrentLink) {
+        const imdbLink = torrentLink; // Modify this if needed
+        window.open(imdbLink, '_blank');
     }
 
-function fetchIMDbLink(torrentUrl) {
-        $.ajax({
-            url: '/get_imdb_link',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ 'torrent_url': torrentUrl }),
-            success: function(response) {
-                if (response.success) {
-                    window.open(response.imdb_link, '_blank');
-                } else {
-                    alert('Failed to fetch IMDb link.');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Failed to fetch IMDb link:', error);
-                alert('Failed to fetch IMDb link. Please try again later.');
-            }
+    function fetchAndCopyMagnetLink(torrentLink) {
+        navigator.clipboard.writeText(torrentLink)
+            .then(() => {
+                alert('Magnet link copied to clipboard!');
+            })
+            .catch(err => {
+                console.error('Failed to copy magnet link: ', err);
+            });
+    }
+
+    function filterTorrents() {
+        const selectedFilters = Array.from(document.querySelectorAll('.filter-toggles .btn.selected')).map(btn => btn.getAttribute('title'));
+        document.querySelectorAll('.torrent-item').forEach(item => {
+            const title = item.getAttribute('data-title');
+            const matchesFilter = selectedFilters.length === 0 || selectedFilters.every(filter => title.includes(filter));
+            item.style.display = matchesFilter ? '' : 'none';
         });
     }
 </script>
-
 </body>
 </html>

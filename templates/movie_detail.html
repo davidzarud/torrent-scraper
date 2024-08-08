@@ -88,6 +88,23 @@
         .return-btn:hover {
             color: #ff5722;
         }
+        .filter-toggles {
+            margin-top: 20px;
+        }
+        .filter-toggles .btn {
+            margin-right: 5px;
+            color: #e0e0e0;
+            background-color: #333;
+            border: none;
+            transition: background-color 0.3s;
+        }
+        .filter-toggles .btn.selected {
+            background-color: #ff5722;
+            color: #ffffff;
+        }
+        .filter-toggles .btn:hover {
+            background-color: #555;
+        }
     </style>
 </head>
 <body>
@@ -112,6 +129,13 @@
 
     {% if torrents %}
     <h2>Torrents</h2>
+
+    <div class="filter-toggles">
+        <button class="btn" title="hdr" id="hdr-toggle">HDR</button>
+        <button class="btn" title="2160" id="4k-toggle">4K</button>
+        <button class="btn" title="1080" id="fullhd-toggle">Full HD</button>
+    </div>
+
     <div class="table-responsive">
         <table class="torrent-table">
             <thead>
@@ -126,15 +150,17 @@
                 <th>Date Uploaded</th>
             </tr>
             </thead>
-            <tbody>
+            <tbody id="torrent-table-body">
             {% for torrent in torrents %}
-            <tr>
+            <tr class="torrent-item" data-title="{{ torrent.title | lower }}">
                 <td>{{ torrent.title }}</td>
                 <td>
-                    <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get IMDb Link</a>
+                    <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;"
+                       class="text-blue-500 hover:underline">Get IMDb Link</a>
                 </td>
                 <td>
-                    <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;" class="text-blue-500 hover:underline">Get Magnet Link</a>
+                    <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;"
+                       class="text-blue-500 hover:underline">Get Magnet Link</a>
                 </td>
                 <td>{{ torrent.category }}</td>
                 <td>{{ torrent.size }}</td>
@@ -192,6 +218,29 @@
             }
         });
     }
+
+    $(document).ready(function() {
+          let filters = {};
+
+        function filterTorrents() {
+            $('#torrent-table-body tr').each(function() {
+                const title = $(this).data('title');
+                const show = Object.keys(filters).every(filter => title.includes(filter));
+                $(this).toggle(show);
+            });
+        }
+
+        $('.filter-toggles .btn').click(function() {
+            const filter = $(this).attr('title').toLowerCase();
+            $(this).toggleClass('selected');
+            if ($(this).hasClass('selected')) {
+                filters[filter] = true;
+            } else {
+                delete filters[filter];
+            }
+            filterTorrents();
+        });
+    });
 </script>
 </body>
 </html>
