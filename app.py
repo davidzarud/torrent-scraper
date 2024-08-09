@@ -1,3 +1,4 @@
+import os
 from os import makedirs
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
@@ -5,11 +6,12 @@ from requests.exceptions import RequestException
 import requests
 from bs4 import BeautifulSoup
 import logging
-from subs import search, TMP_DIR, SUBS_DIR, download_subtitle  # Import the blueprint
+from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
+from fuzzywuzzy import fuzz
 
 app = Flask(__name__)
 app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
-app.add_url_rule('/download/<int:sub_id>/<string:name>', view_func=download_subtitle, methods=['GET'])
+app.add_url_rule('/download/<int:sub_id>/<string:name>', view_func=download_subtitle, methods=['POST'])
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -21,13 +23,9 @@ HEADERS = {
 TMDB_API_KEY = '6dd8946025483f354ff8987af6cf3980'
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
-# QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
-# QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
-# QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
-
-QBITTORRENT_BASE_URL = 'http://192.168.1.194:8080'
-QBITTORRENT_USERNAME = 'admin'
-QBITTORRENT_PASSWORD = 'Dzarud218'
+QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
+QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
+QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
 
 session = requests.Session()
 
@@ -365,6 +363,71 @@ def get_imdb_link():
                 return jsonify({'imdb_link': imdb_link})
     return jsonify({'imdb_link': None})
 
+
+def get_torrent_by_title(title):
+    if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
+        print("qBittorrent credentials not set.")
+        return jsonify({'error': 'qBittorrent credentials not set.'}), 400
+
+    if not is_session_valid():
+        if not login_to_qbittorrent():
+            print("Failed to login to qBittorrent.")
+            return jsonify({'error': 'Failed to login to qBittorrent.'}), 500
+
+    if not title:
+        return jsonify({'error': 'No title provided.'}), 400
+
+    torrents_info_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/info"
+    try:
+        response = session.get(torrents_info_url)
+        response.raise_for_status()
+        torrents = response.json()
+    except requests.RequestException as e:
+        print(f"Error fetching torrents: {e}")
+        return jsonify({'error': 'Error fetching torrents.'}), 500
+
+    best_match = None
+    highest_similarity = 0
+
+    for torrent in torrents:
+        torrent_name = torrent['name']
+        similarity = fuzz.ratio(torrent_name, title)
+        if similarity > highest_similarity:
+            highest_similarity = similarity
+            best_match = torrent
+
+    if best_match:
+        return best_match
+    else:
+        return jsonify({'error': 'No matching torrent found.'}), 404
+
+
+def get_media_file_name(torrent_hash):
+    if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
+        print("qBittorrent credentials not set.")
+        return jsonify({'error': 'qBittorrent credentials not set.'}), 400
+
+    if not is_session_valid():
+        if not login_to_qbittorrent():
+            print("Failed to login to qBittorrent.")
+            return jsonify({'error': 'Failed to login to qBittorrent.'}), 500
+
+    if not torrent_hash:
+        return jsonify({'error': 'No hash provided.'}), 400
+
+    largest_file_name = ''
+    try:
+        torrents_files_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/files?hash={torrent_hash}"
+        response = session.get(torrents_files_url)
+        largest_file = max(response.json(), key=lambda file: file['size'])
+        largest_file_name = largest_file['name']
+        if '/' in largest_file_name:
+            largest_file_name = largest_file_name.rsplit('/', 1)[-1]
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Error fetching torrents: {e}")
+        return jsonify({'error': 'Error fetching torrent files.'}), 500
+    return largest_file_name
 
 if __name__ == '__main__':
     makedirs(TMP_DIR, exist_ok=True)

@@ -1,10 +1,12 @@
+import os
 import re
+import shutil
 from json import loads, load
 from os import path
 from time import time
 
 import requests
-from flask import Flask, request, send_file, abort, jsonify
+from flask import Flask, request, jsonify
 from unicodedata import normalize
 
 app = Flask(__name__)
@@ -15,8 +17,9 @@ global_imdb_id = None
 # Configuration
 TMP_DIR = 'tmp'
 SUBS_DIR = 'subs'
-TMDB_KEY = '6dd8946025483f354ff8987af6cf3980'
 MY_DOMAIN = 'wizdom.xyz/api'
+
+TMDB_KEY = os.getenv('TMDB_KEY')
 
 
 @app.route('/search_sub', methods=['POST'])
@@ -115,7 +118,7 @@ def caching_json(filename, url):
     return {}
 
 
-@app.route('/download/<int:sub_id>/<string:name>')
+@app.route('/download/<int:sub_id>/<string:name>', methods=['POST'])
 def download_subtitle(sub_id, name):
     try:
         # Construct the URL for fetching the subtitle file
@@ -127,15 +130,28 @@ def download_subtitle(sub_id, name):
         response = requests.get(url, verify=False)
         response.raise_for_status()  # Raise an error for HTTP error responses
 
+        data = request.get_json()
+        movie_title = data.get('movie_title')
+        from torrentScraper.app import get_torrent_by_title
+        torrent = get_torrent_by_title(movie_title)
+        from torrentScraper.app import get_media_file_name
+        media_file_name = get_media_file_name(torrent['hash'])
+        media_file_name = media_file_name.rsplit('.', 1)[0]
+        content_path = torrent['content_path'].rsplit('/', 1)[0]
+
         # Save the file locally (optional, if you want to save it before sending it to the user)
-        filename = f"{name}.srt"  # Change the extension based on your file type
+        filename = f"{media_file_name}.srt"  # Change the extension based on your file type
         filepath = path.join(SUBS_DIR, filename)
         with open(filepath, 'wb') as file:
             file.write(response.content)
 
-        # Send the file to the user
-        return send_file(filepath, as_attachment=True)
+        # Move the file to the content_path directory
+        print('ssss', path.join(content_path, filename).replace('\\', '/'))
+        destination_filepath = path.join(content_path, filename)
+        shutil.move(filepath, destination_filepath)
+
+        return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded successfully."})
 
     except requests.RequestException as e:
         app.logger.error(f"Error fetching subtitle file: {e}")
-        abort(404)  # Or return an error message
+        return jsonify({"success": False, "message": "Failed to download subtitle."}), 500

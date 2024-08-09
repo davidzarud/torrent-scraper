@@ -300,7 +300,7 @@
         });
     }
 
-function fetchSubtitles() {
+     function fetchSubtitles() {
     $.ajax({
         url: '/search_sub',
         method: 'POST',
@@ -320,7 +320,7 @@ function fetchSubtitles() {
                         <tr>
                             <td>${subtitle.versioname}</td>
                             <td>
-                                <a href="/download/${subtitle.id}/${encodeURIComponent(subtitle.versioname)}" class="btn btn-primary btn-sm">Download</a>
+                                <button class="btn btn-primary btn-sm" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '{{ movie.title }}')">Download</button>
                             </td>
                         </tr>`;
                     $tableBody.append(row);
@@ -331,6 +331,29 @@ function fetchSubtitles() {
         },
         error: function() {
             console.error('Failed to fetch subtitles');
+        }
+    });
+}
+
+function downloadSubtitle(subId, name, button, title) {
+    $.ajax({
+        url: `/download/${subId}/${encodeURIComponent(name)}`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            subtitle_name: name,
+            movie_title: title
+        }),
+        success: function(response) {
+            if (response.success) {
+                $(button).text('Downloaded!');
+            } else {
+                alert('Failed to download subtitle.');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Failed to download subtitle:', error);
+            alert('Failed to download subtitle. Please try again later.');
         }
     });
 }
