@@ -279,19 +279,44 @@
             });
     }
 
-    function fetchIMDbLink(torrentLink) {
-        const imdbLink = torrentLink; // Modify this if needed
-        window.open(imdbLink, '_blank');
+    function fetchAndCopyMagnetLink(torrentUrl) {
+        $.ajax({
+            url: '/get_magnet_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl, 'context': 'tv' }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Torrent added to qBittorrent!');
+                } else {
+                    alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch magnet link:', error);
+                alert('Failed to fetch magnet link. Please try again later.');
+            }
+        });
     }
 
-    function fetchAndCopyMagnetLink(torrentLink) {
-        navigator.clipboard.writeText(torrentLink)
-            .then(() => {
-                alert('Magnet link copied to clipboard!');
-            })
-            .catch(err => {
-                console.error('Failed to copy magnet link: ', err);
-            });
+    function fetchIMDbLink(torrentUrl) {
+        $.ajax({
+            url: '/get_imdb_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl }),
+            success: function(response) {
+                if (response.success) {
+                    window.open(response.imdb_link, '_blank');
+                } else {
+                    alert('Failed to fetch IMDb link.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch IMDb link:', error);
+                alert('Failed to fetch IMDb link. Please try again later.');
+            }
+        });
     }
 
     function filterTorrents() {

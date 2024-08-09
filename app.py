@@ -110,10 +110,11 @@ def add_torrent_to_qbittorrent(magnet_link):
             return False
 
     add_torrent_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/add"
-    data = {'urls': magnet_link}
+    data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true'}
     try:
         response = session.post(add_torrent_url, data=data)
         response.raise_for_status()
+
         return True
     except RequestException as e:
         print(f"Error adding torrent: {e}")
@@ -253,6 +254,8 @@ def home_tv():
 def get_magnet_link():
     data = request.get_json()
     torrent_url = data.get('torrent_url')
+    context = data.get('context')
+    print("context: ", context)
     magnet_link = fetch_magnet_link(torrent_url)
     if magnet_link:
         success = add_torrent_to_qbittorrent(magnet_link)

@@ -184,7 +184,7 @@
             url: '/get_magnet_link',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ 'torrent_url': torrentUrl }),
+            data: JSON.stringify({ 'torrent_url': torrentUrl, 'context': 'movies' }),
             success: function(response) {
                 if (response.success) {
                     alert('Torrent added to qBittorrent!');
