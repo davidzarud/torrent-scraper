@@ -32,29 +32,46 @@
         .movie-metadata {
             flex: 1;
         }
+        .tab-buttons {
+            margin-top: 20px;
+        }
+        .tab-buttons .btn {
+            margin-right: 5px;
+            color: #e0e0e0;
+            background-color: #333;
+            border: none;
+            transition: background-color 0.3s;
+        }
+        .tab-buttons .btn.selected {
+            background-color: #ff5722;
+            color: #ffffff;
+        }
+        .tab-buttons .btn:hover {
+            background-color: #555;
+        }
         .table-responsive {
             overflow-x: auto;
         }
-        .torrent-table {
+        .torrent-table, .subtitle-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-        .torrent-table th, .torrent-table td {
+        .torrent-table th, .torrent-table td, .subtitle-table th, .subtitle-table td {
             border: 1px solid #333;
             padding: 10px;
             text-align: left;
         }
-        .torrent-table th {
+        .torrent-table th, .subtitle-table th {
             background-color: #333;
         }
-        .torrent-table tbody tr:nth-child(odd) {
+        .torrent-table tbody tr:nth-child(odd), .subtitle-table tbody tr:nth-child(odd) {
             background-color: #2c2c2c;
         }
-        .torrent-table tbody tr:nth-child(even) {
+        .torrent-table tbody tr:nth-child(even), .subtitle-table tbody tr:nth-child(even) {
             background-color: #1e1e1e;
         }
-        .torrent-table tbody tr:hover {
+        .torrent-table tbody tr:hover, .subtitle-table tbody tr:hover {
             background-color: #444;
         }
         .pagination {
@@ -127,63 +144,127 @@
         </div>
     </div>
 
-    {% if torrents %}
-    <h2>Torrents</h2>
-
-    <div class="filter-toggles">
-        <button class="btn" title="hdr" id="hdr-toggle">HDR</button>
-        <button class="btn" title="2160" id="4k-toggle">4K</button>
-        <button class="btn" title="1080" id="fullhd-toggle">Full HD</button>
+    <div class="tab-buttons">
+        <button class="btn selected" id="torrents-tab">Torrents</button>
+        <button class="btn" id="subtitles-tab">Subtitles</button>
     </div>
 
-    <div class="table-responsive">
-        <table class="torrent-table">
-            <thead>
-            <tr>
-                <th>Title</th>
-                <th>IMDB Link</th>
-                <th>Magnet Link</th>
-                <th>Category</th>
-                <th>Size</th>
-                <th>Seeders</th>
-                <th>Leechers</th>
-                <th>Date Uploaded</th>
-            </tr>
-            </thead>
-            <tbody id="torrent-table-body">
-            {% for torrent in torrents %}
-            <tr class="torrent-item" data-title="{{ torrent.title | lower }}">
-                <td>{{ torrent.title }}</td>
-                <td>
-                    <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;"
-                       class="text-blue-500 hover:underline">Get IMDb Link</a>
-                </td>
-                <td>
-                    <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;"
-                       class="text-blue-500 hover:underline">Get Magnet Link</a>
-                </td>
-                <td>{{ torrent.category }}</td>
-                <td>{{ torrent.size }}</td>
-                <td>{{ torrent.seeders }}</td>
-                <td>{{ torrent.leechers }}</td>
-                <td>{{ torrent.date_uploaded }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+    {% if torrents %}
+    <div id="torrents-filter-section" class="tab-section">
+        <div class="filter-toggles">
+            <button class="btn" title="hdr" id="hdr-toggle">HDR</button>
+            <button class="btn" title="2160" id="4k-toggle">4K</button>
+            <button class="btn" title="1080" id="fullhd-toggle">Full HD</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="torrent-table">
+                <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>IMDB Link</th>
+                    <th>Magnet Link</th>
+                    <th>Category</th>
+                    <th>Size</th>
+                    <th>Seeders</th>
+                    <th>Leechers</th>
+                    <th>Date Uploaded</th>
+                </tr>
+                </thead>
+                <tbody id="torrent-table-body">
+                {% for torrent in torrents %}
+                <tr class="torrent-item" data-title="{{ torrent.title | lower }}">
+                    <td>{{ torrent.title }}</td>
+                    <td>
+                        <a href="#" onclick="fetchIMDbLink('{{ torrent.link }}'); return false;"
+                           class="text-blue-500 hover:underline">Get IMDb Link</a>
+                    </td>
+                    <td>
+                        <a href="#" onclick="fetchAndCopyMagnetLink('{{ torrent.link }}'); return false;"
+                           class="text-blue-500 hover:underline">Get Magnet Link</a>
+                    </td>
+                    <td>{{ torrent.category }}</td>
+                    <td>{{ torrent.size }}</td>
+                    <td>{{ torrent.seeders }}</td>
+                    <td>{{ torrent.leechers }}</td>
+                    <td>{{ torrent.date_uploaded }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     {% else %}
-    <p>No torrents found for this movie.</p>
+    <div id="torrents-section" class="tab-section">
+        <p>No torrents found for this movie.</p>
+    </div>
     {% endif %}
+
+    <div id="subtitles-section" class="tab-section" style="display: none;">
+        <div class="table-responsive">
+            <table class="subtitle-table">
+                <thead>
+                <tr>
+                    <th>Subtitle</th>
+                    <th>Download</th>
+                </tr>
+                </thead>
+                <tbody id="subtitles-table-body">
+                <!-- Subtitles will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
+    $(document).ready(function() {
+
+        fetchSubtitles();
+
+        $('#torrents-tab').click(function() {
+            $('.tab-buttons .btn').removeClass('selected');
+            $(this).addClass('selected');
+            $('.tab-section').hide();
+            $('#torrents-filter-section').show();
+        });
+
+        $('#subtitles-tab').click(function() {
+            $('.tab-buttons .btn').removeClass('selected');
+            $(this).addClass('selected');
+            $('.tab-section').hide();
+            $('#subtitles-section').show();
+        });
+
+        let filters = {};
+
+        function filterTorrents() {
+            $('#torrent-table-body tr').each(function() {
+                const title = $(this).data('title');
+                const show = Object.keys(filters).every(filter => title.includes(filter));
+                $(this).toggle(show);
+            });
+        }
+
+        $('.filter-toggles .btn').click(function() {
+            const filter = $(this).attr('title').toLowerCase();
+            $(this).toggleClass('selected');
+            if ($(this).hasClass('selected')) {
+                filters[filter] = true;
+            } else {
+                delete filters[filter];
+            }
+            filterTorrents();
+        });
+    });
+
     function fetchAndCopyMagnetLink(torrentUrl) {
         $.ajax({
             url: '/get_magnet_link',
             type: 'POST',
             contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl }),
             data: JSON.stringify({ 'torrent_url': torrentUrl, 'context': 'movies' }),
             success: function(response) {
                 if (response.success) {
@@ -219,28 +300,40 @@
         });
     }
 
-    $(document).ready(function() {
-          let filters = {};
+function fetchSubtitles() {
+    $.ajax({
+        url: '/search_sub',
+        method: 'POST',
+        data: {
+            title: '{{ movie.title }}',
+            type: 'movie',
+            year: '{{ movie.release }}'
+        },
+        success: function(response) {
+            const subtitles = response.subtitles || [];
+            const $tableBody = $('#subtitles-table-body');
+            $tableBody.empty();
 
-        function filterTorrents() {
-            $('#torrent-table-body tr').each(function() {
-                const title = $(this).data('title');
-                const show = Object.keys(filters).every(filter => title.includes(filter));
-                $(this).toggle(show);
-            });
-        }
-
-        $('.filter-toggles .btn').click(function() {
-            const filter = $(this).attr('title').toLowerCase();
-            $(this).toggleClass('selected');
-            if ($(this).hasClass('selected')) {
-                filters[filter] = true;
+            if (subtitles.length) {
+                subtitles.forEach(function(subtitle) {
+                    const row = `
+                        <tr>
+                            <td>${subtitle.versioname}</td>
+                            <td>
+                                <a href="/download/${subtitle.id}/${encodeURIComponent(subtitle.versioname)}" class="btn btn-primary btn-sm">Download</a>
+                            </td>
+                        </tr>`;
+                    $tableBody.append(row);
+                });
             } else {
-                delete filters[filter];
+                $tableBody.append('<tr><td colspan="2">No subtitles found</td></tr>');
             }
-            filterTorrents();
-        });
+        },
+        error: function() {
+            console.error('Failed to fetch subtitles');
+        }
     });
+}
 </script>
 </body>
 </html>

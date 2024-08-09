@@ -1,10 +1,15 @@
+from os import makedirs
+
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from requests.exceptions import RequestException
 import requests
 from bs4 import BeautifulSoup
 import logging
+from subs import search, TMP_DIR, SUBS_DIR, download_subtitle  # Import the blueprint
 
 app = Flask(__name__)
+app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
+app.add_url_rule('/download/<int:sub_id>/<string:name>', view_func=download_subtitle, methods=['GET'])
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -362,4 +367,6 @@ def get_imdb_link():
 
 
 if __name__ == '__main__':
+    makedirs(TMP_DIR, exist_ok=True)
+    makedirs(SUBS_DIR, exist_ok=True)
     app.run(debug=True)
