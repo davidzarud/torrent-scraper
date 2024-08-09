@@ -99,7 +99,7 @@ def fetch_magnet_link(torrent_url):
         return None
 
 
-def add_torrent_to_qbittorrent(magnet_link):
+def add_torrent_to_qbittorrent(magnet_link, context):
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
         return False
@@ -110,7 +110,7 @@ def add_torrent_to_qbittorrent(magnet_link):
             return False
 
     add_torrent_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/add"
-    data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true'}
+    data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true', 'savepath': context}
     try:
         response = session.post(add_torrent_url, data=data)
         response.raise_for_status()
@@ -255,10 +255,9 @@ def get_magnet_link():
     data = request.get_json()
     torrent_url = data.get('torrent_url')
     context = data.get('context')
-    print("context: ", context)
     magnet_link = fetch_magnet_link(torrent_url)
     if magnet_link:
-        success = add_torrent_to_qbittorrent(magnet_link)
+        success = add_torrent_to_qbittorrent(magnet_link, context)
         if success:
             return jsonify({'success': True})
         else:
