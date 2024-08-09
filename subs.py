@@ -132,12 +132,12 @@ def download_subtitle(sub_id, name):
 
         data = request.get_json()
         movie_title = data.get('movie_title')
-        from torrentScraper.app import get_torrent_by_title
+        from app import get_torrent_by_title
         torrent = get_torrent_by_title(movie_title)
-        from torrentScraper.app import get_media_file_name
+        from app import get_media_file_name
         media_file_name = get_media_file_name(torrent['hash'])
         media_file_name = media_file_name.rsplit('.', 1)[0]
-        content_path = torrent['content_path'].rsplit('/', 1)[0]
+        content_path = torrent['content_path']
 
         # Save the file locally (optional, if you want to save it before sending it to the user)
         filename = f"{media_file_name}.srt"  # Change the extension based on your file type
@@ -146,7 +146,6 @@ def download_subtitle(sub_id, name):
             file.write(response.content)
 
         # Move the file to the content_path directory
-        print('ssss', path.join(content_path, filename).replace('\\', '/'))
         destination_filepath = path.join(content_path, filename)
         shutil.move(filepath, destination_filepath)
 

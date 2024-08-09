@@ -20,7 +20,7 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-TMDB_API_KEY = '6dd8946025483f354ff8987af6cf3980'
+TMDB_KEY = os.getenv('TMDB_KEY')
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
 QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
@@ -151,7 +151,7 @@ def movies():
 def get_popular_bluray_movies(page):
     url = f"{TMDB_BASE_URL}/discover/movie"
     params = {
-        'api_key': TMDB_API_KEY,
+        'api_key': TMDB_KEY,
         'sort_by': 'popularity.desc',
         'with_release_type': 5,
         'page': page
@@ -165,7 +165,7 @@ def get_popular_bluray_movies(page):
 def get_popular_running_shows(page):
     url = f"{TMDB_BASE_URL}/trending/tv/week"
     params = {
-        'api_key': TMDB_API_KEY,
+        'api_key': TMDB_KEY,
         'page': page
     }
     response = requests.get(url, params=params)
@@ -177,7 +177,7 @@ def get_popular_running_shows(page):
 @app.route('/movie/<int:movie_id>')
 def movie_detail(movie_id):
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
-    params = {'api_key': TMDB_API_KEY}
+    params = {'api_key': TMDB_KEY}
     response = requests.get(url, params=params)
     movie_data = response.json()
 
@@ -210,7 +210,7 @@ def movie_detail(movie_id):
 
 def get_movie_details(movie_id):
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
-    params = {'api_key': TMDB_API_KEY}
+    params = {'api_key': TMDB_KEY}
     response = requests.get(url, params=params)
     return response.json()
 
@@ -219,7 +219,7 @@ def get_movie_details(movie_id):
 def show_detail(show_id):
     # Fetch show details
     url = f"{TMDB_BASE_URL}/tv/{show_id}"
-    params = {'api_key': TMDB_API_KEY}
+    params = {'api_key': TMDB_KEY}
     response = requests.get(url, params=params)
     show_data = response.json()
 
@@ -290,7 +290,7 @@ def search_tvshows():
 def search_movies_by_name(query):
     url = f'https://api.themoviedb.org/3/search/movie'
     params = {
-        'api_key': TMDB_API_KEY,
+        'api_key': TMDB_KEY,
         'query': query,
         'language': 'en-US',
         'page': 1,
@@ -309,7 +309,7 @@ def search_movies_by_name(query):
 def search_tvshows_by_name(query):
     url = f'https://api.themoviedb.org/3/search/tv'
     params = {
-        'api_key': TMDB_API_KEY,
+        'api_key': TMDB_KEY,
         'query': query,
         'language': 'en-US',
         'page': 1
