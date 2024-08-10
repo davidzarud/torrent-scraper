@@ -231,6 +231,31 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
     let subtitlesData = null; // Global variable to store subtitles data
+    let currentTab = 'torrents'; // Track current tab
+    let currentEpisode = null; // Track current episode
+
+    function downloadSubtitle(subId, name, button, title) {
+        $.ajax({
+            url: `/download/${subId}/${encodeURIComponent(name)}`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                subtitle_name: name,
+                movie_title: title
+            }),
+            success: function(response) {
+                if (response.success) {
+                    $(button).text('Downloaded!');
+                } else {
+                    alert('Failed to download subtitle.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to download subtitle:', error);
+                alert('Failed to download subtitle. Please try again later.');
+            }
+        });
+    }
 
     function showEpisodes(seasonNumber, element) {
         const episodesContainer = document.querySelector('#episodes');
@@ -258,8 +283,8 @@
                 // Highlight the selected episode
                 circle.classList.add('selected');
                 const query = `{{ show.name }} s${String(seasonNumber).padStart(2, '0')}e${episodeNumberPadded}`;
-                loadTorrents(query);
-                fetchSubtitles(query); // Fetch subtitles when an episode is clicked
+                currentEpisode = query; // Update current episode
+                loadDataBasedOnTab(); // Load data based on the current tab
             };
             episodeGrid.appendChild(circle);
         });
@@ -267,7 +292,17 @@
         episodesContainer.classList.remove('hidden');
     }
 
+    function loadDataBasedOnTab() {
+        if (currentTab === 'torrents') {
+            loadTorrents(currentEpisode);
+        } else if (currentTab === 'subtitles') {
+            fetchSubtitles(currentEpisode);
+        }
+    }
+
     function fetchSubtitles(query) {
+        if (!query) return;
+
         console.log('Fetching subtitles for query:', query);
 
         fetch('/search_sub', {
@@ -286,13 +321,49 @@
         .then(data => {
             console.log('Received subtitles data:', data);
             subtitlesData = data.subtitles; // Store subtitles data globally
+            if (currentTab === 'subtitles') {
+                displaySubtitles();
+            }
         })
         .catch(error => {
             console.error('Error fetching subtitles:', error);
         });
     }
 
+    function displaySubtitles() {
+        const subtitlesContainer = document.querySelector('#subtitles');
+        if (subtitlesData && subtitlesData.length > 0) {
+            let subtitlesHtml = '<h2>Subtitles</h2>';
+            subtitlesHtml += `
+                <table class="torrent-table">
+                    <thead>
+                        <tr>
+                            <th>Subtitle</th>
+                            <th>Download</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            subtitlesData.forEach(subtitle => {
+                subtitlesHtml += `
+                    <tr>
+                        <td>${subtitle.versioname}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, 'subtitle.versioname')">Download</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            subtitlesHtml += `</tbody></table>`;
+            subtitlesContainer.innerHTML = subtitlesHtml;
+        } else {
+            subtitlesContainer.innerHTML = '<p>No subtitles found</p>';
+        }
+    }
+
     function loadTorrents(query) {
+        if (!query) return;
+
         console.log('Attempting to load torrents for query:', query);
         const torrentsContainer = document.querySelector('#torrents');
         torrentsContainer.innerHTML = '<p>Loading torrents...</p>'; // Show loading message
@@ -353,7 +424,7 @@
                     tableHtml += `</tbody></table></div>`;
                     torrentsContainer.innerHTML = tableHtml;
 
-                    // Add click event listeners to filter toggles
+					// Add click event listeners to filter toggles
                     document.querySelectorAll('.filter-toggles .btn').forEach(btn => {
                         btn.addEventListener('click', () => {
                             btn.classList.toggle('selected');
@@ -368,71 +439,30 @@
                 }
             })
             .catch(error => {
-                console.error('Error fetching torrents:', error);
+                console.error('Error loading torrents:', error);
                 torrentsContainer.innerHTML = '<p>Error loading torrents</p>';
             });
     }
 
-    function showTab(tabId) {
-    console.log(`Showing tab: ${tabId}`); // Debugging
+    function showTab(tabName) {
+        // Update current tab
+        currentTab = tabName;
 
-    // Hide all tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.add('hidden');
-    });
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.add('hidden');
+        });
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active');
+        });
 
-    // Remove 'active' class from all tab buttons
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active');
-    });
+        document.getElementById(tabName).classList.remove('hidden');
+        document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
 
-    // Show the selected tab content
-    const tabContent = document.getElementById(tabId);
-    tabContent.classList.remove('hidden');
-
-    // Add 'active' class to the clicked button
-    document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
-
-    // Render subtitles if the subtitles tab is clicked
-    if (tabId === 'subtitles' && subtitlesData) {
-        const subtitlesContainer = document.querySelector('#subtitles');
-        if (subtitlesData.length > 0) {
-            let subtitlesHtml = '<h2>Subtitles</h2>';
-            subtitlesHtml += `
-                <table class="torrent-table">
-                    <thead>
-                        <tr>
-                            <th>Subtitle</th>
-                            <th>Download</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            subtitlesData.forEach(subtitle => {
-                subtitlesHtml += `
-                    <tr>
-                        <td>${subtitle.versioname}</td>
-                        <td>
-                            <button class="btn btn-primary" onclick="downloadSubtitle('${subtitle.id}')">Download</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            subtitlesHtml += `</tbody></table>`;
-            subtitlesContainer.innerHTML = subtitlesHtml;
-        } else {
-            document.querySelector('#subtitles').innerHTML = '<p>No subtitles found</p>';
-        }
+        // Load data for the current tab and selected episode
+        loadDataBasedOnTab();
     }
-}
 
-function downloadSubtitle(subtitleId) {
-    // Implement the function to handle subtitle download
-    console.log('Downloading subtitle with ID:', subtitleId);
-    // You can use a fetch request to initiate the download or redirect to a download URL.
-}
-
-    function fetchAndCopyMagnetLink(torrentUrl) {
+	    function fetchAndCopyMagnetLink(torrentUrl) {
         $.ajax({
             url: '/get_magnet_link',
             type: 'POST',
@@ -472,7 +502,7 @@ function downloadSubtitle(subtitleId) {
         });
     }
 
-    function filterTorrents() {
+        function filterTorrents() {
         const selectedFilters = Array.from(document.querySelectorAll('.filter-toggles .btn.selected')).map(btn => btn.getAttribute('title'));
         document.querySelectorAll('.torrent-item').forEach(item => {
             const title = item.getAttribute('data-title');
@@ -481,6 +511,5 @@ function downloadSubtitle(subtitleId) {
         });
     }
 </script>
-
 </body>
 </html>

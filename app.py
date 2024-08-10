@@ -374,6 +374,7 @@ def get_torrent_by_title(title):
         if not login_to_qbittorrent():
             print("Failed to login to qBittorrent.")
             return jsonify({'error': 'Failed to login to qBittorrent.'}), 500
+    print("title ", title)
 
     if not title:
         return jsonify({'error': 'No title provided.'}), 400
