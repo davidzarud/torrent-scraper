@@ -129,8 +129,8 @@ def download_subtitle(sub_id, name):
     try:
         # Construct the URL for fetching the subtitle file
         url = f"http://{MY_DOMAIN}/files/sub/{sub_id}"
-        app.logger.debug(f"Fetching subtitle from URL: {url}")
-        app.logger.debug(f"Subtitle name: {name}")
+        app.logger.info(f"Fetching subtitle from URL: {url}")
+        app.logger.info(f"Subtitle name: {name}, Subtitle id: {sub_id}")
 
         # Download the subtitle file
         response = requests.get(url, verify=False)
@@ -144,6 +144,7 @@ def download_subtitle(sub_id, name):
         media_file_name = get_media_file_name(torrent['hash'])
         media_file_name = media_file_name.rsplit('.', 1)[0]
         content_path = torrent['content_path']
+        app.logger.info(f"Content path: {content_path}")
 
         # Save the file locally (optional, if you want to save it before sending it to the user)
         filename = f"{media_file_name}.srt"  # Change the extension based on your file type
@@ -153,6 +154,7 @@ def download_subtitle(sub_id, name):
 
         # Move the file to the content_path directory
         destination_filepath = path.join(content_path, filename)
+        app.logger.info(f"Destination path: {destination_filepath}")
         shutil.move(filepath, destination_filepath)
 
         return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded successfully."})
