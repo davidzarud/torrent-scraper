@@ -145,6 +145,31 @@
         .hidden {
             display: none; /* Explicitly hide elements with this class */
         }
+                .table-responsive {
+            overflow-x: auto;
+        }
+        .torrent-table, .subtitle-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .torrent-table th, .torrent-table td, .subtitle-table th, .subtitle-table td {
+            border: 1px solid #333;
+            padding: 10px;
+            text-align: left;
+        }
+        .torrent-table th, .subtitle-table th {
+            background-color: #333;
+        }
+        .torrent-table tbody tr:nth-child(odd), .subtitle-table tbody tr:nth-child(odd) {
+            background-color: #2c2c2c;
+        }
+        .torrent-table tbody tr:nth-child(even), .subtitle-table tbody tr:nth-child(even) {
+            background-color: #1e1e1e;
+        }
+        .torrent-table tbody tr:hover, .subtitle-table tbody tr:hover {
+            background-color: #444;
+        }
     </style>
 </head>
 <body>
@@ -349,41 +374,63 @@
     }
 
     function showTab(tabId) {
-        console.log(`Showing tab: ${tabId}`); // Debugging
+    console.log(`Showing tab: ${tabId}`); // Debugging
 
-        // Hide all tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.add('hidden');
-        });
+    // Hide all tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
 
-        // Remove 'active' class from all tab buttons
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.classList.remove('active');
-        });
+    // Remove 'active' class from all tab buttons
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active');
+    });
 
-        // Show the selected tab content
-        const tabContent = document.getElementById(tabId);
-        tabContent.classList.remove('hidden');
+    // Show the selected tab content
+    const tabContent = document.getElementById(tabId);
+    tabContent.classList.remove('hidden');
 
-        // Add 'active' class to the clicked button
-        document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
+    // Add 'active' class to the clicked button
+    document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
 
-        // Render subtitles if the subtitles tab is clicked
-        if (tabId === 'subtitles' && subtitlesData) {
-            const subtitlesContainer = document.querySelector('#subtitles');
-            if (subtitlesData.length > 0) {
-                let subtitlesHtml = '<h2>Subtitles</h2>';
-                subtitlesHtml += '<ul>';
-                subtitlesData.forEach(subtitle => {
-                    subtitlesHtml += `<li>${subtitle.versioname}</li>`;
-                });
-                subtitlesHtml += '</ul>';
-                subtitlesContainer.innerHTML = subtitlesHtml;
-            } else {
-                document.querySelector('#subtitles').innerHTML = '<p>No subtitles found</p>';
-            }
+    // Render subtitles if the subtitles tab is clicked
+    if (tabId === 'subtitles' && subtitlesData) {
+        const subtitlesContainer = document.querySelector('#subtitles');
+        if (subtitlesData.length > 0) {
+            let subtitlesHtml = '<h2>Subtitles</h2>';
+            subtitlesHtml += `
+                <table class="torrent-table">
+                    <thead>
+                        <tr>
+                            <th>Subtitle</th>
+                            <th>Download</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            subtitlesData.forEach(subtitle => {
+                subtitlesHtml += `
+                    <tr>
+                        <td>${subtitle.versioname}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="downloadSubtitle('${subtitle.id}')">Download</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            subtitlesHtml += `</tbody></table>`;
+            subtitlesContainer.innerHTML = subtitlesHtml;
+        } else {
+            document.querySelector('#subtitles').innerHTML = '<p>No subtitles found</p>';
         }
     }
+}
+
+function downloadSubtitle(subtitleId) {
+    // Implement the function to handle subtitle download
+    console.log('Downloading subtitle with ID:', subtitleId);
+    // You can use a fetch request to initiate the download or redirect to a download URL.
+}
 
     function fetchAndCopyMagnetLink(torrentUrl) {
         $.ajax({
