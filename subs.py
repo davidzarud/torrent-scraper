@@ -27,12 +27,18 @@ def search():
     global global_imdb_id
     title = request.form.get('title')
     media_type = request.form.get('type')
-    year = request.form.get('year')[:4]
+
+    print('title: ', title)
+    print('mediatype: ', media_type)
+
+    year = None
+    if request.form.get('year'):
+        year = request.form.get('year')[:4]
     season, episode = 0, 0
 
     # Extract season and episode from title if present
     match = re.search(r's(\d+)(e(\d+))?', title, re.IGNORECASE)
-    if (match):
+    if match:
         season = int(match.group(1))
         if match.group(3):
             episode = int(match.group(3))

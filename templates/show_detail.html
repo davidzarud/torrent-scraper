@@ -205,6 +205,8 @@
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
+    let subtitlesData = null; // Global variable to store subtitles data
+
     function showEpisodes(seasonNumber, element) {
         const episodesContainer = document.querySelector('#episodes');
         const episodeGrid = episodesContainer.querySelector('.episode-grid');
@@ -232,11 +234,37 @@
                 circle.classList.add('selected');
                 const query = `{{ show.name }} s${String(seasonNumber).padStart(2, '0')}e${episodeNumberPadded}`;
                 loadTorrents(query);
+                fetchSubtitles(query); // Fetch subtitles when an episode is clicked
             };
             episodeGrid.appendChild(circle);
         });
 
         episodesContainer.classList.remove('hidden');
+    }
+
+    function fetchSubtitles(query) {
+        console.log('Fetching subtitles for query:', query);
+
+        fetch('/search_sub', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `title=${encodeURIComponent(query)}&type=tv`
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received subtitles data:', data);
+            subtitlesData = data.subtitles; // Store subtitles data globally
+        })
+        .catch(error => {
+            console.error('Error fetching subtitles:', error);
+        });
     }
 
     function loadTorrents(query) {
@@ -321,24 +349,41 @@
     }
 
     function showTab(tabId) {
-    console.log(`Showing tab: ${tabId}`); // Debugging
+        console.log(`Showing tab: ${tabId}`); // Debugging
 
-    // Hide all tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.add('hidden');
-    });
+        // Hide all tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
 
-    // Remove 'active' class from all tab buttons
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active');
-    });
+        // Remove 'active' class from all tab buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active');
+        });
 
-    // Show the selected tab content
-    document.getElementById(tabId).classList.remove('hidden');
+        // Show the selected tab content
+        const tabContent = document.getElementById(tabId);
+        tabContent.classList.remove('hidden');
 
-    // Add 'active' class to the clicked button
-    document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
-}
+        // Add 'active' class to the clicked button
+        document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
+
+        // Render subtitles if the subtitles tab is clicked
+        if (tabId === 'subtitles' && subtitlesData) {
+            const subtitlesContainer = document.querySelector('#subtitles');
+            if (subtitlesData.length > 0) {
+                let subtitlesHtml = '<h2>Subtitles</h2>';
+                subtitlesHtml += '<ul>';
+                subtitlesData.forEach(subtitle => {
+                    subtitlesHtml += `<li>${subtitle.versioname}</li>`;
+                });
+                subtitlesHtml += '</ul>';
+                subtitlesContainer.innerHTML = subtitlesHtml;
+            } else {
+                document.querySelector('#subtitles').innerHTML = '<p>No subtitles found</p>';
+            }
+        }
+    }
 
     function fetchAndCopyMagnetLink(torrentUrl) {
         $.ajax({
@@ -389,5 +434,6 @@
         });
     }
 </script>
+
 </body>
 </html>
