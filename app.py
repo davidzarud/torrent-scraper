@@ -1,4 +1,5 @@
 import os
+import re
 from os import makedirs
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
@@ -391,9 +392,17 @@ def get_torrent_by_title(title):
     best_match = None
     highest_similarity = 0
 
+    season, episode = extract_season_episode(title)
+
     for torrent in torrents:
         torrent_name = torrent['name']
         similarity = fuzz.ratio(torrent_name, title)
+
+        if season and episode:
+            season_episode_pattern = f"s{season}e{episode}"
+            if season_episode_pattern.lower() not in torrent_name.lower():
+                continue
+
         if similarity > highest_similarity:
             highest_similarity = similarity
             best_match = torrent
@@ -430,6 +439,16 @@ def get_media_file_name(torrent_hash):
         print(f"Error fetching torrents: {e}")
         return jsonify({'error': 'Error fetching torrent files.'}), 500
     return largest_file_name
+
+
+def extract_season_episode(title):
+    match = re.search(r's(\d{2})e(\d{2})', title, re.IGNORECASE)
+    if match:
+        season = match.group(1)
+        episode = match.group(2)
+        return season, episode
+    return None, None
+
 
 if __name__ == '__main__':
     makedirs(TMP_DIR, exist_ok=True)
