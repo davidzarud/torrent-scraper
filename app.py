@@ -346,6 +346,7 @@ def search_torrents(query):
 
     # Sort torrents by the number of seeders in descending order
     all_torrents.sort(key=lambda torrent: torrent['seeders'], reverse=True)
+    print("torrs ", all_torrents)
     return all_torrents
 
 
