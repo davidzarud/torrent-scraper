@@ -170,6 +170,20 @@
         .torrent-table tbody tr:hover, .subtitle-table tbody tr:hover {
             background-color: #444;
         }
+        #search-season-btn {
+            font-size: 14px; /* Make the button text smaller */
+            padding: 5px 10px; /* Adjust padding for a smaller button */
+            margin-left: 15px; /* Move the button a bit to the right */
+            background-color: #ff5722; /* Orange background color */
+            color: #ffffff; /* White text color */
+            border: none; /* Remove default border */
+            border-radius: 4px; /* Slightly rounded corners */
+            transition: background-color 0.3s; /* Smooth color transition */
+        }
+
+        #search-season-btn:hover {
+            background-color: #e64a19; /* Darker orange for hover effect */
+        }
     </style>
 </head>
 <body>
@@ -205,6 +219,7 @@
             {{ season.season_number }}
         </div>
         {% endfor %}
+        <button id="search-season-btn" class="btn hidden" onclick="searchEntireSeason()">Search Entire Season</button>
     </div>
 
     <div id="episodes" class="hidden">
@@ -257,6 +272,8 @@
         });
     }
 
+    let selectedSeason = null; // Global variable to store the selected season
+
     function showEpisodes(seasonNumber, element) {
         const episodesContainer = document.querySelector('#episodes');
         const episodeGrid = episodesContainer.querySelector('.episode-grid');
@@ -267,6 +284,13 @@
             circle.classList.remove('selected');
         });
         element.classList.add('selected');
+
+        // Show the "Search entire season" button
+        const searchSeasonBtn = document.getElementById('search-season-btn');
+        searchSeasonBtn.classList.remove('hidden');
+        searchSeasonBtn.onclick = () => searchEntireSeason(seasonNumber); // Set onclick function with seasonNumber
+
+        selectedSeason = seasonNumber; // Update global variable
 
         const episodes = {{ seasons | tojson }}.find(season => season.season_number === seasonNumber).episodes;
 
@@ -509,6 +533,13 @@
             const matchesFilter = selectedFilters.length === 0 || selectedFilters.every(filter => title.includes(filter));
             item.style.display = matchesFilter ? '' : 'none';
         });
+    }
+
+    function searchEntireSeason(seasonNumber) {
+        if (!seasonNumber) return;
+
+        const query = `{{ show.name }} s${String(seasonNumber).padStart(2, '0')}`;
+        loadTorrents(query);
     }
 </script>
 </body>
