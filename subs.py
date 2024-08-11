@@ -7,7 +7,7 @@ from time import time
 
 import requests
 from flask import Flask, request, jsonify
-from unicodedata import normalize
+from unicodedata import normalize, combining
 
 app = Flask(__name__)
 
@@ -58,12 +58,12 @@ def search():
 
 def search_tmdb(media_type, query, year=None):
     # Normalize and prepare the query
-    query = normalize_str(query)
+    normalized_query = normalize_str(query)
 
     # Build the filename and URL
-    filename = f'wizdom.search.tmdb.{media_type}.{query}.{year}.json'
-    url = f"https://api.tmdb.org/3/search/{media_type}?api_key={TMDB_KEY}&query={query}&year={year}" if year else \
-        f"https://api.tmdb.org/3/search/{media_type}?api_key={TMDB_KEY}&query={query}"
+    filename = f'wizdom.search.tmdb.{media_type}.{normalized_query}.{year}.json'
+    url = f"https://api.tmdb.org/3/search/{media_type}?api_key={TMDB_KEY}&query={normalized_query}&year={year}" if year else \
+        f"https://api.tmdb.org/3/search/{media_type}?api_key={TMDB_KEY}&query={normalized_query}"
 
     # Log URL being requested
     app.logger.debug(f"TMDB Search URL: {url}")
@@ -108,6 +108,7 @@ def search_by_imdb(imdb_id, season=0, episode=0, version=0):
 def normalize_str(s):
     print(f"Normalizing string: {s}")
     normalized = normalize('NFKD', s)
+    normalized = ''.join(c for c in normalized if not combining(c))
     print(f"Normalized string: {normalized}")
     return normalized
 

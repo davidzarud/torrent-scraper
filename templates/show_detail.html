@@ -306,7 +306,7 @@
                 });
                 // Highlight the selected episode
                 circle.classList.add('selected');
-                const query = `{{ show.name }} s${String(seasonNumber).padStart(2, '0')}e${episodeNumberPadded}`;
+                const query = decodeHtmlEntities(`{{ show.name }} s${String(seasonNumber).padStart(2, '0')}e${episodeNumberPadded}`);
                 currentEpisode = query; // Update current episode
                 loadDataBasedOnTab(); // Load data based on the current tab
             };
@@ -538,8 +538,14 @@
     function searchEntireSeason(seasonNumber) {
         if (!seasonNumber) return;
 
-        const query = `{{ show.name }} s${String(seasonNumber).padStart(2, '0')}`;
+        const query = decodeHtmlEntities(`{{ show.name }} s${String(seasonNumber).padStart(2, '0')}`);
         loadTorrents(query);
+    }
+
+    function decodeHtmlEntities(str) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = str;
+        return textarea.value;
     }
 </script>
 </body>

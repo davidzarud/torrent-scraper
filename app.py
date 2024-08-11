@@ -2,6 +2,7 @@ import os
 import re
 from os import makedirs
 
+import unicodedata
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from requests.exceptions import RequestException
 import requests
@@ -9,6 +10,7 @@ from bs4 import BeautifulSoup
 import logging
 from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
 from fuzzywuzzy import fuzz
+from unicodedata import normalize
 
 app = Flask(__name__)
 app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
@@ -337,6 +339,7 @@ def search_torrents_route():
 def search_torrents(query):
     logging.info(f"Searching torrents with query: {query}")
     all_torrents = []
+    query = sanitize_string(query)
     for page in range(1, 4):  # Fetch results from the first 3 pages
         search_url = f"{BASE_URL}search/{page}/?search={query}"
         html_content = fetch_html(search_url)
@@ -448,6 +451,20 @@ def extract_season_episode(title):
         episode = match.group(2)
         return season, episode
     return None, None
+
+
+def sanitize_string(query):
+    # Normalize the string to NFKD (decomposes characters, e.g., é -> e + ́ )
+    normalized_query = unicodedata.normalize('NFKD', query)
+
+    # Encode to ASCII, ignoring non-ASCII characters, then decode back to a string
+    sanitized_query = normalized_query.encode('ascii', 'ignore').decode('ascii')
+
+    # Replace apostrophes with an empty string
+    sanitized_query = sanitized_query.replace("'", "")
+    sanitized_query = sanitized_query.replace("&", "")
+
+    return sanitized_query
 
 
 if __name__ == '__main__':
