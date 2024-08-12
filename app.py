@@ -147,8 +147,12 @@ def home():
 @app.route('/movies')
 def movies():
     page = request.args.get('page', default=1, type=int)
-    movies, total_pages = get_popular_bluray_movies(page)
-    return render_template('movies.html', movies=movies, page=page, total_pages=total_pages)
+    sort = request.args.get('sort', default='popular', type=str)
+    if sort == 'popular':
+        movies_result, total_pages = get_popular_bluray_movies(page)
+    else:
+        movies_result, total_pages = get_top_rated_movies(page)
+    return render_template('movies.html', movies=movies_result, page=page, total_pages=total_pages)
 
 
 def get_popular_bluray_movies(page):
@@ -165,8 +169,32 @@ def get_popular_bluray_movies(page):
     return data['results'], total_pages
 
 
+def get_top_rated_movies(page):
+    url = f"{TMDB_BASE_URL}/movie/top_rated"
+    params = {
+        'api_key': TMDB_KEY,
+        'page': page
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+    return data['results'], total_pages
+
+
 def get_popular_running_shows(page):
     url = f"{TMDB_BASE_URL}/trending/tv/week"
+    params = {
+        'api_key': TMDB_KEY,
+        'page': page
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+    return data['results'], total_pages
+
+
+def get_top_rated_shows(page):
+    url = f"{TMDB_BASE_URL}/tv/top_rated"
     params = {
         'api_key': TMDB_KEY,
         'page': page
@@ -252,7 +280,11 @@ def show_detail(show_id):
 @app.route('/tv')
 def home_tv():
     page = request.args.get('page', default=1, type=int)
-    shows, total_pages = get_popular_running_shows(page)
+    sort = request.args.get('sort', default='popular', type=str)
+    if sort == 'top_rated':
+        shows, total_pages = get_top_rated_shows(page)
+    else:
+        shows, total_pages = get_popular_running_shows(page)
     return render_template('tvshows.html', shows=shows, page=page, total_pages=total_pages)
 
 

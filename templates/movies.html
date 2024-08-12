@@ -87,9 +87,9 @@
             color: #ff5722;
         }
         .top-bar .dropdown {
-        position: relative;
-        display: inline-block;
-    }
+            position: relative;
+            display: inline-block;
+        }
 
     .top-bar .dropdown-content {
         display: none;
@@ -133,14 +133,19 @@
                 <a href="{{ url_for('movies') }}?sort=top_rated">Top Rated</a>
             </div>
         </div>
-        <!--        <a href="{{ url_for('movies') }}" class="btn">Movies</a>-->
-        <a href="{{ url_for('home_tv') }}" class="btn">TV Shows</a>
+        <div class="dropdown">
+            <button class="btn">TV Shows</button>
+            <div class="dropdown-content">
+                <a href="{{ url_for('home_tv') }}?sort=popular">Popular</a>
+                <a href="{{ url_for('home_tv') }}?sort=top_rated">Top Rated</a>
+            </div>
+        </div>
     </div>
 </div>
 
 
 <div class="container mt-4">
-    <h2 class="mt-4">Popular Blu-ray Movies</h2>
+    <h2 class="mt-4">Movies</h2>
     <div class="movie-grid mt-4">
         {% for movie in movies %}
         <div class="movie-item">
@@ -162,7 +167,8 @@
         <ul class="pagination">
             {% if page > 1 %}
             <li class="page-item">
-                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ page - 1 }}">Previous</a>
+                <a class="page-link"
+                   href="?query={{ request.args.get('query') }}&page={{ page - 1 }}&sort={{ request.args.get('sort') }}">Previous</a>
             </li>
             {% endif %}
 
@@ -171,7 +177,7 @@
 
             {% if start_page > 1 %}
             <li class="page-item">
-                <a class="page-link" href="?query={{ request.args.get('query') }}&page=1">1</a>
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page=1&sort={{ request.args.get('sort') }}">1</a>
             </li>
             <li class="page-item disabled">
                 <span class="page-link">...</span>
@@ -180,7 +186,9 @@
 
             {% for p in range(start_page, end_page + 1) %}
             <li class="page-item {% if p == page %}active{% endif %}">
-                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ p }}">{{ p }}</a>
+                <a class="page-link"
+                   href="?query={{ request.args.get('query') }}&page={{ p }}&sort={{ request.args.get('sort') }}">{{ p
+                    }}</a>
             </li>
             {% endfor %}
 
@@ -189,20 +197,20 @@
                 <span class="page-link">...</span>
             </li>
             <li class="page-item">
-                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ total_pages }}">{{ total_pages
-                    }}</a>
+                <a class="page-link"
+                   href="?query={{ request.args.get('query') }}&page={{ total_pages }}&sort={{ request.args.get('sort') }}">{{
+                    total_pages }}</a>
             </li>
             {% endif %}
 
             {% if page < total_pages %}
             <li class="page-item">
-                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ page + 1 }}">Next</a>
+                <a class="page-link"
+                   href="?query={{ request.args.get('query') }}&page={{ page + 1 }}&sort={{ request.args.get('sort') }}">Next</a>
             </li>
             {% endif %}
         </ul>
     </nav>
-
-
 </div>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
