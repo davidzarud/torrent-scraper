@@ -58,6 +58,7 @@ def search():
 
 def search_tmdb(media_type, query, year=None):
     # Normalize and prepare the query
+    query = query.replace('&amp;', '&')
     normalized_query = normalize_str(query)
 
     # Build the filename and URL

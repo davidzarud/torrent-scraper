@@ -258,6 +258,9 @@ def show_detail(show_id):
     seasons = show_data.get('seasons', [])
     seasons = [season for season in seasons if season.get('season_number') != 0]  # Filter out season 0
 
+    vote_average = show_data.get('vote_average', 0)
+    user_score_percentage = round(vote_average * 10)
+
     for season in seasons:
         season_number = season.get('season_number')
         episodes_url = f"{TMDB_BASE_URL}/tv/{show_id}/season/{season_number}"
@@ -271,7 +274,8 @@ def show_detail(show_id):
         'poster_path': show_data.get('poster_path'),
         'overview': show_data.get('overview'),
         'genre': ', '.join([genre['name'] for genre in show_data.get('genres', [])]),
-        'cast': ', '.join([member['name'] for member in show_data.get('credits', {}).get('cast', [])[:5]])
+        'cast': ', '.join([member['name'] for member in show_data.get('credits', {}).get('cast', [])[:5]]),
+        'user_score_percentage': user_score_percentage
     }
 
     return render_template('show_detail.html', show=show, seasons=seasons)

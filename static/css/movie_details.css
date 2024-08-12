@@ -1,0 +1,151 @@
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+}
+
+.container {
+    background-color: #1e1e1e;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 1200px;
+    margin: auto;
+}
+
+.movie-detail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-bottom: 30px;
+}
+
+.movie-poster {
+    flex: 0 0 200px;
+    margin-right: 20px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.movie-poster img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.3s;
+}
+
+.movie-poster img:hover {
+    transform: scale(1.05);
+}
+
+.movie-metadata {
+    flex: 1;
+}
+
+.movie-metadata p {
+    margin: 8px 0;
+}
+
+.movie-metadata strong {
+    color: #ff5722;
+}
+
+.tab-buttons {
+    margin-top: 20px;
+    display: flex;
+    border-bottom: 2px solid #333;
+}
+
+.tab-buttons .btn {
+    padding: 10px 20px;
+    margin-right: 5px;
+    color: #e0e0e0;
+    background-color: #333;
+    border: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.tab-buttons .btn.selected {
+    background-color: #ff5722;
+    color: #ffffff;
+}
+
+.tab-buttons .btn:hover {
+    background-color: #555;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.torrent-table, .subtitle-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.torrent-table th, .torrent-table td, .subtitle-table th, .subtitle-table td {
+    border: 1px solid #333;
+    padding: 12px;
+    text-align: left;
+}
+
+.torrent-table th, .subtitle-table th {
+    background-color: #333;
+    color: #ffffff;
+}
+
+.torrent-table tbody tr:nth-child(odd), .subtitle-table tbody tr:nth-child(odd) {
+    background-color: #2c2c2c;
+}
+
+.torrent-table tbody tr:nth-child(even), .subtitle-table tbody tr:nth-child(even) {
+    background-color: #1e1e1e;
+}
+
+.torrent-table tbody tr:hover, .subtitle-table tbody tr:hover {
+    background-color: #444;
+}
+
+.return-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: color 0.3s, transform 0.3s;
+}
+
+.return-btn:hover {
+    color: #ff5722;
+    transform: scale(1.1);
+}
+
+.filter-toggles {
+    margin-top: 20px;
+}
+
+.filter-toggles .btn {
+    padding: 10px 15px;
+    margin-right: 5px;
+    color: #e0e0e0;
+    background-color: #333;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.filter-toggles .btn.selected {
+    background-color: #ff5722;
+    color: #ffffff;
+}
+
+.filter-toggles .btn:hover {
+    background-color: #555;
+}

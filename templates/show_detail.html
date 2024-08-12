@@ -5,209 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ show.name }}</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            background-color: #121212;
-            color: #e0e0e0;
-        }
-        .container {
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            padding: 20px;
-        }
-        .movie-detail {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }
-        .movie-poster {
-            flex: 0 0 250px; /* Adjusted size */
-            margin-right: 20px;
-        }
-        .movie-poster img {
-            width: 100%;
-            border-radius: 8px;
-        }
-        .movie-metadata {
-            flex: 1;
-        }
-        .movie-metadata h2 {
-            margin-top: 0;
-        }
-        .season-grid, .episode-grid {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 10px 0;
-        }
-        .circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: #ff5722; /* Default color */
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-        .circle:hover {
-            background-color: #e64a19; /* Hover color */
-        }
-        .circle.selected {
-            background-color: #d53300; /* A brighter orange */
-        }
-        .episode {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: #ff5722; /* Default color for episodes */
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-        .episode:hover {
-            background-color: #e64a19; /* Hover color for episodes */
-        }
-        .episode.selected {
-            background-color: #d53300; /* A brighter orange */
-        }
-        .hidden {
-            display: none;
-        }
-        .movie-grid {
-            margin-top: 20px;
-        }
-        .return-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #e0e0e0;
-            cursor: pointer;
-            transition: color 0.3s;
-            margin-bottom: 20px;
-        }
-        .return-btn:hover {
-            color: #ff5722;
-        }
-        .filter-toggles {
-            margin-top: 20px;
-        }
-        .filter-toggles .btn {
-            margin-right: 5px;
-            color: #e0e0e0;
-            background-color: #333;
-            border: none;
-            transition: background-color 0.3s;
-        }
-        .filter-toggles .btn.selected {
-            background-color: #ff5722;
-            color: #ffffff;
-        }
-        .filter-toggles .btn:hover {
-            background-color: #555;
-        }
-        .tab-container {
-            margin-bottom: 20px;
-        }
-        .tab-button {
-            background-color: #333;
-            color: #e0e0e0;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .tab-button.active {
-            background-color: #ff5722;
-            color: #ffffff;
-        }
-        .tab-button:hover {
-            background-color: #555;
-        }
-        .tab-content {
-            display: none; /* Hide all tab content by default */
-        }
-        .tab-content:not(.hidden) {
-             display: block; /* Show content when not hidden */
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .hidden {
-            display: none; /* Explicitly hide elements with this class */
-        }
-                .table-responsive {
-            overflow-x: auto;
-        }
-        .torrent-table, .subtitle-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .torrent-table th, .torrent-table td, .subtitle-table th, .subtitle-table td {
-            border: 1px solid #333;
-            padding: 10px;
-            text-align: left;
-        }
-        .torrent-table th, .subtitle-table th {
-            background-color: #333;
-        }
-        .torrent-table tbody tr:nth-child(odd), .subtitle-table tbody tr:nth-child(odd) {
-            background-color: #2c2c2c;
-        }
-        .torrent-table tbody tr:nth-child(even), .subtitle-table tbody tr:nth-child(even) {
-            background-color: #1e1e1e;
-        }
-        .torrent-table tbody tr:hover, .subtitle-table tbody tr:hover {
-            background-color: #444;
-        }
-        #search-season-btn {
-            font-size: 14px; /* Make the button text smaller */
-            padding: 5px 10px; /* Adjust padding for a smaller button */
-            margin-left: 15px; /* Move the button a bit to the right */
-            background-color: #ff5722; /* Orange background color */
-            color: #ffffff; /* White text color */
-            border: none; /* Remove default border */
-            border-radius: 4px; /* Slightly rounded corners */
-            transition: background-color 0.3s; /* Smooth color transition */
-        }
-
-        #search-season-btn:hover {
-            background-color: #e64a19; /* Darker orange for hover effect */
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/show_detail.css') }}">
 </head>
 <body>
-<div class="top-bar">
-    <h1>Torrent Downloader</h1>
-    <div>
-        <a href="{{ url_for('movies') }}" class="btn">Movies</a>
-        <a href="{{ url_for('home_tv') }}" class="btn">TV Shows</a>
-    </div>
-</div>
-
 <div class="container mt-4">
     <button class="return-btn" onclick="window.history.back();">
         &larr;
     </button>
+    <h1 class="mt-4">{{ show.name }}</h1>
+
     <div class="movie-detail">
         <div class="movie-poster">
             <img src="https://image.tmdb.org/t/p/w200{{ show.poster_path }}" alt="{{ show.name }}">
         </div>
         <div class="movie-metadata">
-            <h2>{{ show.name }}</h2>
             <p><strong>Release Date:</strong> {{ show.release_date }}</p>
             <p><strong>Genres:</strong> {{ show.genre }}</p>
             <p><strong>Cast:</strong> {{ show.cast }}</p>
+            <p><strong>User Score:</strong> {{ show.user_score_percentage }}%</p>
             <p><strong>Overview:</strong> {{ show.overview }}</p>
         </div>
     </div>
@@ -229,9 +44,9 @@
         </div>
     </div>
 
-    <div class="tab-container">
-        <button class="tab-button active" onclick="showTab('torrents')">Torrents</button>
-        <button class="tab-button" onclick="showTab('subtitles')">Subtitles</button>
+    <div class="tab-buttons">
+        <button class="btn selected" id="torrents-tab" onclick="showTab('torrents')">Torrents</button>
+        <button class="btn" id="subtitles-tab" onclick="showTab('subtitles')">Subtitles</button>
     </div>
 
     <div id="torrents" class="tab-content">
@@ -357,7 +172,7 @@
     function displaySubtitles() {
         const subtitlesContainer = document.querySelector('#subtitles');
         if (subtitlesData && subtitlesData.length > 0) {
-            let subtitlesHtml = '<h2>Subtitles</h2>';
+            let subtitlesHtml = '';
             subtitlesHtml += `
                 <table class="torrent-table">
                     <thead>
@@ -405,7 +220,6 @@
                 torrentsContainer.innerHTML = ''; // Clear previous content
                 if (data.torrents && data.torrents.length > 0) {
                     let tableHtml = `
-                        <h2>Torrents</h2>
                         <div class="filter-toggles">
                             <button class="btn" title="hdr" id="hdr-toggle">HDR</button>
                             <button class="btn" title="2160" id="4k-toggle">4K</button>
@@ -416,9 +230,7 @@
                                 <thead>
                                     <tr>
                                         <th>Title</th>
-                                        <th>IMDB Link</th>
                                         <th>Magnet Link</th>
-                                        <th>Category</th>
                                         <th>Size</th>
                                         <th>Seeders</th>
                                         <th>Leechers</th>
@@ -432,12 +244,8 @@
                             <tr class="torrent-item" data-title="${torrent.title.toLowerCase()}">
                                 <td>${torrent.title}</td>
                                 <td>
-                                    <a href="#" onclick="fetchIMDbLink('${torrent.link}'); return false;">Get IMDb Link</a>
-                                </td>
-                                <td>
                                     <a href="#" onclick="fetchAndCopyMagnetLink('${torrent.link}'); return false;">Get Magnet Link</a>
                                 </td>
-                                <td>${torrent.category}</td>
                                 <td>${torrent.size}</td>
                                 <td>${torrent.seeders}</td>
                                 <td>${torrent.leechers}</td>
@@ -475,12 +283,12 @@
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.add('hidden');
         });
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.classList.remove('active');
+        document.querySelectorAll('.btn').forEach(button => {
+            button.classList.remove('selected');
         });
 
         document.getElementById(tabName).classList.remove('hidden');
-        document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+        document.querySelector(`.btn[onclick="showTab('${tabName}')"]`).classList.add('selected');
 
         // Load data for the current tab and selected episode
         loadDataBasedOnTab();
