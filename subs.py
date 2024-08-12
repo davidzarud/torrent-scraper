@@ -80,12 +80,12 @@ def search_tmdb(media_type, query, year=None):
             if media_type == 'tv':
                 # Sort results by popularity and get the most popular one
                 filtered_results = [result for result in results if result.get('name', '').lower() == query.lower()]
-                if filtered_results:
-                    most_popular_result = sorted(filtered_results, key=lambda x: x.get('popularity', 0), reverse=True)[0]
-                else:
-                    most_popular_result = None  # Or handle the case where no exact match is found
             else:
-                most_popular_result = sorted(results, key=lambda x: x.get('popularity', 0), reverse=True)[0]
+                filtered_results = [result for result in results if result.get('title', '').lower() == query.lower()]
+            if filtered_results:
+                most_popular_result = sorted(filtered_results, key=lambda x: x.get('popularity', 0), reverse=True)[0]
+            else:
+                most_popular_result = None  # Or handle the case where no exact match is found
             tmdb_id = int(most_popular_result["id"])
             url = f"https://api.tmdb.org/3/{media_type}/{tmdb_id}/external_ids?api_key={TMDB_KEY}"
             response = requests.get(url)
