@@ -28,15 +28,17 @@
     </div>
 
     <h3 class="mt-4">Seasons</h3>
-    <div class="season-grid">
-        {% for season in seasons %}
-        <div class="circle" onclick="showEpisodes({{ season.season_number }}, this)">
-            {{ season.season_number }}
+    <div class="season-container">
+        <div class="season-grid">
+            {% for season in seasons %}
+            <div class="circle" onclick="showEpisodes({{ season.season_number }}, this)">
+                {{ season.season_number }}
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        <button id="search-season-btn" class="btn hidden" onclick="searchEntireSeason()">Search Entire Season</button>
     </div>
-    <button id="search-season-btn" class="btn hidden" onclick="searchEntireSeason()">Search Entire Season</button>
-
+    
     <div id="episodes" class="hidden">
         <h3>Episodes</h3>
         <div class="episode-grid">
