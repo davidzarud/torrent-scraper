@@ -3,16 +3,20 @@ body {
     color: #e0e0e0;
     font-family: 'Arial', sans-serif;
     line-height: 1.6;
+    margin: 0;
+    padding: 0;
 }
 
 .container {
     background-color: #1e1e1e;
     border-radius: 12px;
-    padding: 30px;
+    padding: 20px;
     max-width: 1200px;
     margin: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
+/* Movie Detail Section */
 .movie-detail {
     display: flex;
     flex-wrap: wrap;
@@ -21,7 +25,7 @@ body {
 }
 
 .movie-poster {
-    flex: 0 0 200px;
+    flex: 0 0 150px;
     margin-right: 20px;
     border-radius: 12px;
     overflow: hidden;
@@ -41,6 +45,7 @@ body {
 
 .movie-metadata {
     flex: 1;
+    text-align: left;
 }
 
 .movie-metadata p {
@@ -51,9 +56,11 @@ body {
     color: #ff5722;
 }
 
+/* Tabs */
 .tab-buttons {
     margin-top: 20px;
     display: flex;
+    flex-wrap: wrap;
     border-bottom: 2px solid #333;
 }
 
@@ -77,16 +84,18 @@ body {
     background-color: #555;
 }
 
+/* Table Styles */
 .table-responsive {
     overflow-x: auto;
+    margin-top: 20px;
 }
 
 .torrent-table, .subtitle-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .torrent-table th, .torrent-table td, .subtitle-table th, .subtitle-table td {
@@ -112,6 +121,7 @@ body {
     background-color: #444;
 }
 
+/* Buttons */
 .return-btn {
     background: none;
     border: none;
@@ -148,4 +158,101 @@ body {
 
 .filter-toggles .btn:hover {
     background-color: #555;
+}
+
+h1 {
+    font-size: 32px;
+    font-weight: bold;
+    font-family: 'Helvetica Neue', sans-serif;
+    color: #ff5722;
+    margin-bottom: 20px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 767px) {
+
+    h1 {
+        font-size: 32px;
+        font-weight: normal;
+        margin-bottom: 15px;
+    }
+
+    .movie-detail {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .movie-poster {
+        flex: 0 0 120px;
+        margin-right: 15px;
+    }
+
+    .movie-metadata {
+        flex: 1;
+        text-align: left;
+        font-size: 14px;
+    }
+
+    .movie-metadata p {
+        margin: 6px 0;
+    }
+
+    .tab-buttons {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .tab-buttons .btn {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 14px;
+        margin: 0;
+        text-align: center;
+        border-radius: 0;
+    }
+
+     .filter-toggles {
+        margin-top: 10px;
+        flex-direction: row;
+        flex-wrap: nowrap;
+     }
+
+    .filter-toggles .btn {
+        flex: 1;
+        margin-right: 5px;
+        padding: 8px 10px;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    .filter-toggles .btn:last-child {
+        margin-right: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .movie-poster {
+        flex: 0 0 100px;
+        margin-right: 10px;
+    }
+
+    .movie-metadata {
+        font-size: 12px;
+    }
+
+    .tab-buttons .btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    .torrent-table th, .torrent-table td, .subtitle-table th, .subtitle-table td {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    h1 {
+        font-size: 26px;
+        font-weight: normal;
+        margin-bottom: 10px;
+    }
 }
