@@ -249,7 +249,7 @@ def get_movie_details(movie_id):
 @app.route('/show/<int:show_id>')
 def show_detail(show_id):
     # Fetch show details
-    url = f"{TMDB_BASE_URL}/tv/{show_id}"
+    url = f"{TMDB_BASE_URL}/tv/{show_id}?append_to_response=credits"
     params = {'api_key': TMDB_KEY}
     response = requests.get(url, params=params)
     show_data = response.json()
