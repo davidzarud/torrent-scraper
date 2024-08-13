@@ -11,9 +11,8 @@
 <div class="top-bar">
     <h1>Torrent Downloader</h1>
     <div>
-        <form action="{{ url_for('search_tvshows') }}" method="GET" style="display: inline;">
-            <input type="text" name="query" placeholder="Search TV Shows" class="form-control d-inline-block"
-                   style="width: 200px;">
+        <form action="{{ url_for('search_movies') }}" method="GET" style="display: inline;">
+            <input type="text" name="query" placeholder="Search Movies" class="search-bar d-inline-block">
             <button type="submit" class="btn">Search</button>
         </form>
         <div class="dropdown">
@@ -35,21 +34,16 @@
 
 <div class="container mt-4">
     <h2 class="mt-4">TV Shows</h2>
-    <div class="movie-grid mt-4">
+    <div class="row movie-grid mt-4">
         {% for show in shows %}
-        <div class="movie-item">
+        <div class="col-lg-4 col-md-6 col-sm-12 mb-4 movie-item">
             <a href="{{ url_for('show_detail', show_id=show.id) }}">
                 <img src="https://image.tmdb.org/t/p/w200{{ show.poster_path }}" alt="{{ show.name }}">
                 <h5>{{ show.name }}</h5>
             </a>
         </div>
-        {% if loop.index % 5 == 0 %}
-    </div>
-    <div class="movie-grid mt-4">
-        {% endif %}
         {% endfor %}
-    </div>
-
+    </div>s
     {% set total_pages = total_pages if total_pages is defined else 1 %}
     {% set page = page if page is defined else 1 %}
 
