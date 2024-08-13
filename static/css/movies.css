@@ -118,7 +118,9 @@ body {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    margin: 10px 0;
+    margin-bottom: 10px;
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .pagination .page-item {
@@ -145,9 +147,14 @@ body {
     color: #ffffff;
 }
 
-.prev-next-link {
-    margin: 5px 0;
+.prev-next-buttons {
+    display: flex;
+    justify-content: center;
     width: 100%;
+}
+
+.prev-next-link {
+    margin: 5px;
     text-align: center;
 }
 
@@ -202,26 +209,25 @@ body {
         margin: 10px;
     }
 
-   .pagination {
+.pagination {
         padding: 0 10px;
     }
 
-   .pagination .page-link {
+    .pagination .page-link {
         padding: 6px 10px;
         font-size: 0.8rem;
     }
 
     .number-pagination {
-        max-width: 100%;
-        overflow-x: auto;
+        margin-bottom: 15px;
+    }
+
+    .prev-next-buttons {
+        flex-direction: row;
     }
 
     .prev-next-link {
-        width: 100%;
-    }
-
-    .pagination .page-item {
-        margin: 0 3px; /* Reduced spacing between pagination items */
+        flex: 1;
     }
 }
 
