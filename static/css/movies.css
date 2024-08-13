@@ -108,12 +108,21 @@ body {
 }
 
 .pagination {
-    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     margin-top: 20px;
 }
 
+.number-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 10px 0;
+}
+
 .pagination .page-item {
-    margin: 0 5px;
+    margin: 2px;
 }
 
 .pagination .page-item.active .page-link {
@@ -123,7 +132,7 @@ body {
 }
 
 .pagination .page-link {
-    color: #000000;
+    color: #f5f5f5;
     padding: 8px 16px;
     border-radius: 50px;
     background-color: #424242;
@@ -134,6 +143,12 @@ body {
 .pagination .page-link:hover {
     background-color: #ff6d00;
     color: #ffffff;
+}
+
+.prev-next-link {
+    margin: 5px 0;
+    width: 100%;
+    text-align: center;
 }
 
 .top-bar .dropdown {
@@ -187,21 +202,27 @@ body {
         margin: 10px;
     }
 
-        .pagination {
-            flex-direction: row;
-            overflow-x: auto; /* Allow horizontal scroll if needed */
-            padding: 0 10px; /* Add some horizontal padding */
-        }
+   .pagination {
+        padding: 0 10px;
+    }
 
-        .pagination .page-link {
-            padding: 8px 10px;
-            font-size: 0.7rem; /* Smaller font size for better fit */
-            white-space: nowrap; /* Prevent text wrapping */
-        }
+   .pagination .page-link {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
 
-        .pagination .page-item {
-            margin: 0 3px; /* Reduced spacing between pagination items */
-        }
+    .number-pagination {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .prev-next-link {
+        width: 100%;
+    }
+
+    .pagination .page-item {
+        margin: 0 3px; /* Reduced spacing between pagination items */
+    }
 }
 
 @media (min-width: 768px) {
