@@ -78,7 +78,7 @@
 
     <div id="subtitles-section" class="tab-section" style="display: none;">
         <div class="table-responsive">
-            <table class="subtitle-table">
+            <table class="torrent-table">
                 <thead>
                 <tr>
                     <th>Subtitle</th>
@@ -200,10 +200,10 @@ function fetchSubtitles() {
             if (subtitles.length) {
                 subtitles.forEach(function(subtitle) {
                     const row = `
-                    <tr>
+                    <tr class="torrent-item">
                         <td>${subtitle.versioname}</td>
                         <td>
-                            <button class="btn btn-primary btn-sm" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '{{ movie.title }}')">Download</button>
+                            <button class="btn btn-primary btn-sm download" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '{{ movie.title }}')">Download</button>
                         </td>
                     </tr>`;
                     $tableBody.append(row);
