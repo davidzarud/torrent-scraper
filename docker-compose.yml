@@ -11,5 +11,7 @@ services:
       - QBITTORRENT_BASE_URL=${QBITTORRENT_BASE_URL}
       - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
       - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+      - TMDB_KEY=${TMDB_KEY}
     volumes:
       - .:/app
+      - /data/downloads:/downloads

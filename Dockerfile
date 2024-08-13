@@ -1,17 +1,14 @@
-# Use the official Python image from the Docker Hub
-FROM python:3.11-alpine
+# Use the official Python image from the DockerHub
+FROM python:3.11-slim
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
 # Copy the current directory contents into the container at /app
-COPY . /app
+COPY . .
 
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Flask paginate and Flask material explicitly
-RUN pip install Flask-Paginate Flask-Material
 
 # Make port 8888 available to the world outside this container
 EXPOSE 8888
@@ -19,5 +16,5 @@ EXPOSE 8888
 # Define environment variable
 ENV FLASK_APP=app.py
 
-# Run app.py when the container launches
+# Run flask server
 CMD ["flask", "run", "--host=0.0.0.0", "--port=8888"]

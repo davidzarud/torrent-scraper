@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ show.name }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/show_detail.css') }}">
+</head>
+<body>
+<div class="container mt-4">
+    <button class="return-btn" onclick="window.history.back();">
+        &larr;
+    </button>
+    <h1 class="mt-4">{{ show.name }}</h1>
+
+    <div class="movie-detail">
+        <div class="movie-poster">
+            <img src="https://image.tmdb.org/t/p/w200{{ show.poster_path }}" alt="{{ show.name }}">
+        </div>
+        <div class="movie-metadata">
+            <p><strong>Release Date:</strong> {{ show.release_date }}</p>
+            <p><strong>Genres:</strong> {{ show.genre }}</p>
+            <p><strong>Cast:</strong> {{ show.cast }}</p>
+            <p><strong>User Score:</strong> {{ show.user_score_percentage }}%</p>
+            <p><strong>Overview:</strong> {{ show.overview }}</p>
+        </div>
+    </div>
+
+    <h3 class="mt-4">Seasons</h3>
+    <div class="season-container">
+        <div class="season-grid">
+            {% for season in seasons %}
+            <div class="circle" onclick="showEpisodes({{ season.season_number }}, this)">
+                {{ season.season_number }}
+            </div>
+            {% endfor %}
+        </div>
+        <button id="search-season-btn" class="btn hidden" onclick="searchEntireSeason()">Search Entire Season</button>
+    </div>
+    
+    <div id="episodes" class="hidden">
+        <h3>Episodes</h3>
+        <div class="episode-grid">
+            <!-- Episodes will be dynamically added here -->
+        </div>
+    </div>
+
+    <div class="tab-buttons">
+        <button class="btn selected" id="torrents-tab" onclick="showTab('torrents')">Torrents</button>
+        <button class="btn" id="subtitles-tab" onclick="showTab('subtitles')">Subtitles</button>
+    </div>
+
+    <div id="torrents" class="tab-content">
+        <!-- Torrents will be dynamically added here -->
+    </div>
+
+    <div id="subtitles" class="tab-content hidden">
+        <!-- Subtitles will be dynamically added here -->
+    </div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+    let subtitlesData = null; // Global variable to store subtitles data
+    let currentTab = 'torrents'; // Track current tab
+    let currentEpisode = null; // Track current episode
+
+    function downloadSubtitle(subId, name, button, title) {
+        $.ajax({
+            url: `/download/${subId}/${encodeURIComponent(name)}`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                subtitle_name: name,
+                movie_title: title
+            }),
+            success: function(response) {
+                if (response.success) {
+                    $(button).text('Downloaded!');
+                } else {
+                    alert('Failed to download subtitle.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to download subtitle:', error);
+                alert('Failed to download subtitle. Please try again later.');
+            }
+        });
+    }
+
+    let selectedSeason = null; // Global variable to store the selected season
+
+    function showEpisodes(seasonNumber, element) {
+        const episodesContainer = document.querySelector('#episodes');
+        const episodeGrid = episodesContainer.querySelector('.episode-grid');
+        episodeGrid.innerHTML = ''; // Clear previous episodes
+
+        // Highlight selected season
+        document.querySelectorAll('.season-grid .circle').forEach(circle => {
+            circle.classList.remove('selected');
+        });
+        element.classList.add('selected');
+
+        // Show the "Search entire season" button
+        const searchSeasonBtn = document.getElementById('search-season-btn');
+        searchSeasonBtn.classList.remove('hidden');
+        searchSeasonBtn.onclick = () => searchEntireSeason(seasonNumber); // Set onclick function with seasonNumber
+
+        selectedSeason = seasonNumber; // Update global variable
+
+        const episodes = {{ seasons | tojson }}.find(season => season.season_number === seasonNumber).episodes;
+
+        episodes.forEach(episodeNumber => {
+            const episodeNumberPadded = String(episodeNumber).padStart(2, '0');
+            const circle = document.createElement('div');
+            circle.className = 'episode';
+            circle.textContent = episodeNumber;
+            circle.onclick = () => {
+                // Remove highlight from previously selected episode
+                document.querySelectorAll('.episode-grid .episode').forEach(ep => {
+                    ep.classList.remove('selected');
+                });
+                // Highlight the selected episode
+                circle.classList.add('selected');
+                const query = decodeHtmlEntities(`{{ show.name }} s${String(seasonNumber).padStart(2, '0')}e${episodeNumberPadded}`);
+                currentEpisode = query; // Update current episode
+                loadDataBasedOnTab(); // Load data based on the current tab
+            };
+            episodeGrid.appendChild(circle);
+        });
+
+        episodesContainer.classList.remove('hidden');
+    }
+
+    function loadDataBasedOnTab() {
+        if (currentTab === 'torrents') {
+            loadTorrents(currentEpisode);
+        } else if (currentTab === 'subtitles') {
+            fetchSubtitles(currentEpisode);
+        }
+    }
+
+    function fetchSubtitles(query) {
+        if (!query) return;
+
+        console.log('Fetching subtitles for query:', query);
+
+        fetch('/search_sub', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `type=tv&title=${encodeURIComponent(query)}`
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received subtitles data:', data);
+            subtitlesData = data.subtitles; // Store subtitles data globally
+            if (currentTab === 'subtitles') {
+                displaySubtitles();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching subtitles:', error);
+        });
+    }
+
+    function displaySubtitles() {
+        const subtitlesContainer = document.querySelector('#subtitles');
+        if (subtitlesData && subtitlesData.length > 0) {
+            let subtitlesHtml = '';
+            subtitlesHtml += `
+                <table class="torrent-table">
+                    <thead>
+                        <tr>
+                            <th>Subtitle</th>
+                            <th>Download</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            subtitlesData.forEach(subtitle => {
+                subtitlesHtml += `
+                    <tr>
+                        <td>${subtitle.versioname}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '${subtitle.versioname}')">Download</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            subtitlesHtml += `</tbody></table>`;
+            subtitlesContainer.innerHTML = subtitlesHtml;
+        } else {
+            subtitlesContainer.innerHTML = '<p>No subtitles found</p>';
+        }
+    }
+
+    function loadTorrents(query) {
+        if (!query) return;
+
+        console.log('Attempting to load torrents for query:', query);
+        const torrentsContainer = document.querySelector('#torrents');
+        torrentsContainer.innerHTML = '<p>Loading torrents...</p>'; // Show loading message
+
+        fetch(`/search_torrents?query=${encodeURIComponent(query)}`)
+            .then(response => {
+                console.log('Received response:', response); // Debug response
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Received torrents data:', data); // Debug data
+                torrentsContainer.innerHTML = ''; // Clear previous content
+                if (data.torrents && data.torrents.length > 0) {
+                    let tableHtml = `
+                        <div class="filter-toggles">
+                            <button class="btn" title="hdr" id="hdr-toggle">HDR</button>
+                            <button class="btn" title="2160" id="4k-toggle">4K</button>
+                            <button class="btn" title="1080" id="fullhd-toggle">Full HD</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="torrent-table">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Magnet Link</th>
+                                        <th>Size</th>
+                                        <th>Seeders</th>
+                                        <th>Leechers</th>
+                                        <th>Date Uploaded</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    data.torrents.forEach(torrent => {
+                        tableHtml += `
+                            <tr class="torrent-item" data-title="${torrent.title.toLowerCase()}">
+                                <td>${torrent.title}</td>
+                                <td>
+                                    <a href="#" onclick="fetchAndCopyMagnetLink('${torrent.link}'); return false;">Get Magnet Link</a>
+                                </td>
+                                <td>${torrent.size}</td>
+                                <td>${torrent.seeders}</td>
+                                <td>${torrent.leechers}</td>
+                                <td>${torrent.date_uploaded}</td>
+                            </tr>
+                        `;
+                    });
+                    tableHtml += `</tbody></table></div>`;
+                    torrentsContainer.innerHTML = tableHtml;
+
+					// Add click event listeners to filter toggles
+                    document.querySelectorAll('.filter-toggles .btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            btn.classList.toggle('selected');
+                            filterTorrents();
+                        });
+                    });
+
+                    // Initial filter
+                    filterTorrents();
+                } else {
+                    torrentsContainer.innerHTML = '<p>No torrents found</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading torrents:', error);
+                torrentsContainer.innerHTML = '<p>Error loading torrents</p>';
+            });
+    }
+
+    function showTab(tabName) {
+        // Update current tab
+        currentTab = tabName;
+
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.add('hidden');
+        });
+        document.querySelectorAll('.btn').forEach(button => {
+            button.classList.remove('selected');
+        });
+
+        document.getElementById(tabName).classList.remove('hidden');
+        document.querySelector(`.btn[onclick="showTab('${tabName}')"]`).classList.add('selected');
+
+        // Load data for the current tab and selected episode
+        loadDataBasedOnTab();
+    }
+
+	    function fetchAndCopyMagnetLink(torrentUrl) {
+        $.ajax({
+            url: '/get_magnet_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl, 'context': 'tv' }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Torrent added to qBittorrent!');
+                } else {
+                    alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch magnet link:', error);
+                alert('Failed to fetch magnet link. Please try again later.');
+            }
+        });
+    }
+
+    function fetchIMDbLink(torrentUrl) {
+        $.ajax({
+            url: '/get_imdb_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'torrent_url': torrentUrl }),
+            success: function(response) {
+                if (response.success) {
+                    window.open(response.imdb_link, '_blank');
+                } else {
+                    alert('Failed to fetch IMDb link.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch IMDb link:', error);
+                alert('Failed to fetch IMDb link. Please try again later.');
+            }
+        });
+    }
+
+        function filterTorrents() {
+        const selectedFilters = Array.from(document.querySelectorAll('.filter-toggles .btn.selected')).map(btn => btn.getAttribute('title'));
+        document.querySelectorAll('.torrent-item').forEach(item => {
+            const title = item.getAttribute('data-title');
+            const matchesFilter = selectedFilters.length === 0 || selectedFilters.every(filter => title.includes(filter));
+            item.style.display = matchesFilter ? '' : 'none';
+        });
+    }
+
+    function searchEntireSeason(seasonNumber) {
+        if (!seasonNumber) return;
+
+        const query = decodeHtmlEntities(`{{ show.name }} s${String(seasonNumber).padStart(2, '0')}`);
+        loadTorrents(query);
+    }
+
+    function decodeHtmlEntities(str) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = str;
+        return textarea.value;
+    }
+</script>
+</body>
+</html>

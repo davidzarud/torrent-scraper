@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popular TV Shows</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tvshows.css') }}">
+</head>
+<body>
+<div class="top-bar">
+    <h1>Torrent Downloader</h1>
+    <div>
+        <form action="{{ url_for('search_tvshows') }}" method="GET" style="display: inline;">
+            <input type="text" name="query" placeholder="Search TV Shows" class="search-bar d-inline-block">
+            <button type="submit" class="btn">Search</button>
+        </form>
+        <div class="dropdown">
+            <button class="btn">Movies</button>
+            <div class="dropdown-content">
+                <a href="{{ url_for('movies') }}?sort=popular">Popular</a>
+                <a href="{{ url_for('movies') }}?sort=top_rated">Top Rated</a>
+            </div>
+        </div>
+        <div class="dropdown">
+            <button class="btn">TV Shows</button>
+            <div class="dropdown-content">
+                <a href="{{ url_for('home_tv') }}?sort=popular">Popular</a>
+                <a href="{{ url_for('home_tv') }}?sort=top_rated">Top Rated</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <h2 class="mt-4">TV Shows</h2>
+    <div class="row movie-grid mt-4">
+        {% for show in shows %}
+        <div class="col-lg-4 col-md-6 col-sm-12 mb-4 movie-item">
+            <a href="{{ url_for('show_detail', show_id=show.id) }}">
+                <img src="https://image.tmdb.org/t/p/w200{{ show.poster_path }}" alt="{{ show.name }}">
+                <h5>{{ show.name }}</h5>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% set total_pages = total_pages if total_pages is defined else 1 %}
+    {% set page = page if page is defined else 1 %}
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <div class="number-pagination">
+                {% set start_page = page - 5 if page - 5 > 1 else 1 %}
+                {% set end_page = page + 4 if page + 4 < total_pages else total_pages %}
+
+                {% if start_page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?query={{ request.args.get('query') }}&page=1&sort={{ request.args.get('sort') }}">1</a>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+
+                {% for p in range(start_page, end_page + 1) %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ p }}&sort={{ request.args.get('sort') }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+
+                {% if end_page < total_pages %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ total_pages }}&sort={{ request.args.get('sort') }}">{{ total_pages }}</a>
+                </li>
+                {% endif %}
+            </div>
+
+            <div class="prev-next-buttons">
+                <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                    <a class="page-link prev-next-link" href="?query={{ request.args.get('query') }}&page={{ page - 1 }}&sort={{ request.args.get('sort') }}">Previous</a>
+                </li>
+                <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                    <a class="page-link prev-next-link" href="?query={{ request.args.get('query') }}&page={{ page + 1 }}&sort={{ request.args.get('sort') }}">Next</a>
+                </li>
+            </div>
+        </ul>
+    </nav>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
