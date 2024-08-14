@@ -141,7 +141,7 @@ def is_session_valid():
 
 @app.route('/')
 def home():
-    return redirect(url_for('movies'))
+    return redirect(url_for('movies', sort='popular'))
 
 
 @app.route('/movies')
