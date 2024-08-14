@@ -7,6 +7,7 @@ from time import time
 
 import requests
 from flask import Flask, request, jsonify
+from fuzzywuzzy import fuzz
 from unicodedata import normalize, combining
 
 app = Flask(__name__)
@@ -153,6 +154,7 @@ def download_subtitle(sub_id, name):
         media_file_name = get_media_file_name(torrent['hash'])
         media_file_name = media_file_name.rsplit('.', 1)[0]
         content_path = torrent['content_path']
+        content_path = re.sub(r'/[^/]+\.[^/]+$', '', content_path)
         app.logger.info(f"Content path: {content_path}")
 
         # Save the file locally (optional, if you want to save it before sending it to the user)
