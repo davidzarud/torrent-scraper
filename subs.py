@@ -21,6 +21,7 @@ SUBS_DIR = 'subs'
 MY_DOMAIN = 'wizdom.xyz/api'
 
 TMDB_KEY = os.getenv('TMDB_KEY')
+SUB_SEARCH_DIR = os.getenv('SUB_SEARCH_DIR')
 
 
 @app.route('/search_sub', methods=['POST'])
@@ -148,14 +149,19 @@ def download_subtitle(sub_id, name):
         data = request.get_json()
         movie_title = data.get('movie_title')
         app.logger.info(f"movie title: {movie_title}")
-        from app import get_torrent_by_title
-        torrent = get_torrent_by_title(movie_title)
-        from app import get_media_file_name
-        media_file_name = get_media_file_name(torrent['hash'])
-        media_file_name = media_file_name.rsplit('.', 1)[0]
-        content_path = torrent['content_path']
-        content_path = re.sub(r'/[^/]+\.[^/]+$', '', content_path)
+
+        closest_file_path = find_closest_file(SUB_SEARCH_DIR, movie_title)
+        if not closest_file_path:
+            app.logger.error("No matching media file found.")
+            return jsonify({"success": False, "message": "No matching media file found."}), 404
+
+        app.logger.info(f"Closest matching file found: {closest_file_path}")
+
+        content_path = os.path.dirname(closest_file_path)
+        media_file_name = re.sub(r'\.[^.]+$', '', os.path.basename(closest_file_path))
+
         app.logger.info(f"Content path: {content_path}")
+        app.logger.info(f"Media file name: {media_file_name}")
 
         # Save the file locally (optional, if you want to save it before sending it to the user)
         filename = f"{media_file_name}.srt"  # Change the extension based on your file type
@@ -173,3 +179,35 @@ def download_subtitle(sub_id, name):
     except requests.RequestException as e:
         app.logger.error(f"Error fetching subtitle file: {e}")
         return jsonify({"success": False, "message": "Failed to download subtitle."}), 500
+
+
+def find_closest_file(directory, movie_title):
+    closest_match = None
+    highest_ratio = 0
+
+    # Check if the movie title contains a season/episode pattern
+    tv_show_pattern = re.search(r's\d{2}e\d{2}', movie_title, re.IGNORECASE)
+
+    # Walk through the directory tree
+    for root, dirs, files in os.walk(directory):
+        for file_name in files:
+            # Normalize file names for comparison (remove extensions, convert to lowercase)
+            normalized_file_name = re.sub(r'\.[^.]+$', '', file_name).lower()
+            normalized_title = movie_title.lower()
+
+            # If it's a TV show, try to match the sXXeYY pattern
+            if tv_show_pattern:
+                episode_pattern = tv_show_pattern.group()
+                if episode_pattern.lower() in normalized_file_name:
+                    ratio = fuzz.ratio(normalized_title, normalized_file_name)
+                else:
+                    continue  # Skip this file if it doesn't contain the episode pattern
+            else:
+                # Use fuzzywuzzy to find the closest match for movies
+                ratio = fuzz.ratio(normalized_title, normalized_file_name)
+
+            if ratio > highest_ratio:
+                highest_ratio = ratio
+                closest_match = os.path.join(root, file_name)
+
+    return closest_match

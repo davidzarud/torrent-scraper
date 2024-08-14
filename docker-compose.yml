@@ -12,6 +12,7 @@ services:
       - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
       - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
       - TMDB_KEY=${TMDB_KEY}
+      - SUB_SEARCH_DIR=${SUB_SEARCH_DIR}
     volumes:
       - .:/app
       - /data/downloads:/downloads
