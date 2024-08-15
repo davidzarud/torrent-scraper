@@ -1,16 +1,16 @@
+import logging
 import os
 import re
 from os import makedirs
 
-import unicodedata
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-from requests.exceptions import RequestException
 import requests
+import unicodedata
 from bs4 import BeautifulSoup
-import logging
-from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from fuzzywuzzy import fuzz
-from unicodedata import normalize
+from requests.exceptions import RequestException
+
+from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
 
 app = Flask(__name__)
 app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
@@ -150,9 +150,35 @@ def movies():
     sort = request.args.get('sort', default='popular', type=str)
     if sort == 'popular':
         movies_result, total_pages = get_popular_bluray_movies(page)
+    elif sort == 'trending':
+        movies_result, total_pages = get_trending_movies(page)
     else:
         movies_result, total_pages = get_top_rated_movies(page)
     return render_template('movies.html', movies=movies_result, page=page, total_pages=total_pages)
+
+
+def get_trending_movies(page):
+    url = f"{TMDB_BASE_URL}/trending/movie/day?language=en-US"
+    params = {
+        'api_key': TMDB_KEY,
+        'page': page
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+    return data['results'], total_pages
+
+
+def get_trending_shows(page):
+    url = f"{TMDB_BASE_URL}/trending/tv/day?language=en-US"
+    params = {
+        'api_key': TMDB_KEY,
+        'page': page
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+    return data['results'], total_pages
 
 
 def get_popular_bluray_movies(page):
@@ -287,6 +313,8 @@ def home_tv():
     sort = request.args.get('sort', default='popular', type=str)
     if sort == 'top_rated':
         shows, total_pages = get_top_rated_shows(page)
+    elif sort == 'trending':
+        shows, total_pages = get_trending_shows(page)
     else:
         shows, total_pages = get_popular_running_shows(page)
     return render_template('tvshows.html', shows=shows, page=page, total_pages=total_pages)
