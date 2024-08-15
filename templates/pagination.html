@@ -1,0 +1,41 @@
+<nav aria-label="Page navigation">
+    <ul class="pagination">
+        <div class="number-pagination">
+            {% set start_page = page - 5 if page - 5 > 1 else 1 %}
+            {% set end_page = page + 4 if page + 4 < total_pages else total_pages %}
+
+            {% if start_page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page=1&sort={{ request.args.get('sort') }}">1</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ p }}&sort={{ request.args.get('sort') }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+
+            {% if end_page < total_pages %}
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?query={{ request.args.get('query') }}&page={{ total_pages }}&sort={{ request.args.get('sort') }}">{{ total_pages }}</a>
+            </li>
+            {% endif %}
+        </div>
+
+        <div class="prev-next-buttons">
+            <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                <a class="page-link prev-next-link" href="?query={{ request.args.get('query') }}&page={{ page - 1 }}&sort={{ request.args.get('sort') }}">Previous</a>
+            </li>
+            <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                <a class="page-link prev-next-link" href="?query={{ request.args.get('query') }}&page={{ page + 1 }}&sort={{ request.args.get('sort') }}">Next</a>
+            </li>
+        </div>
+    </ul>
+</nav>
