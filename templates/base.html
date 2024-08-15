@@ -11,7 +11,7 @@
 </head>
 <body>
 <div class="top-bar">
-    <h1>Torrent Downloader</h1>
+    <h1><a href="{{ url_for('movies') }}?sort=popular">Media Downloader</a></h1>
     <div>
         <form action="{% block search_action %}{% endblock %}" method="GET" style="display: inline;">
             <input type="text" name="query" placeholder="{% block search_placeholder %}Search{% endblock %}" class="search-bar d-inline-block">
