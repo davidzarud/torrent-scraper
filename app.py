@@ -1,16 +1,16 @@
+import logging
 import os
 import re
 from os import makedirs
 
-import unicodedata
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-from requests.exceptions import RequestException
 import requests
+import unicodedata
 from bs4 import BeautifulSoup
-import logging
-from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from fuzzywuzzy import fuzz
-from unicodedata import normalize
+from requests.exceptions import RequestException
+
+from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
 
 app = Flask(__name__)
 app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
