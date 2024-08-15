@@ -11,15 +11,17 @@
 </head>
 <body>
 <div class="top-bar">
-    <h1><a href="{{ url_for('movies') }}?sort=popular">Media Downloader</a></h1>
+    <h1><a href="{{ url_for('movies') }}?sort=trending">Media Downloader</a></h1>
     <div>
         <form action="{% block search_action %}{% endblock %}" method="GET" style="display: inline;">
-            <input type="text" name="query" placeholder="{% block search_placeholder %}Search{% endblock %}" class="search-bar d-inline-block">
+            <input type="text" name="query" placeholder="{% block search_placeholder %}Search{% endblock %}"
+                   class="search-bar d-inline-block">
             <button type="submit" class="btn">Search</button>
         </form>
         <div class="dropdown">
             <button class="btn">Movies</button>
             <div class="dropdown-content">
+                <a href="{{ url_for('movies') }}?sort=trending">Trending</a>
                 <a href="{{ url_for('movies') }}?sort=popular">Popular</a>
                 <a href="{{ url_for('movies') }}?sort=top_rated">Top Rated</a>
             </div>
@@ -27,6 +29,7 @@
         <div class="dropdown">
             <button class="btn">TV Shows</button>
             <div class="dropdown-content">
+                <a href="{{ url_for('home_tv') }}?sort=trending">Trending</a>
                 <a href="{{ url_for('home_tv') }}?sort=popular">Popular</a>
                 <a href="{{ url_for('home_tv') }}?sort=top_rated">Top Rated</a>
             </div>
