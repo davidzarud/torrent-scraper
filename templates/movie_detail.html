@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/movie_details.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
 </head>
 <body>
 <div class="container mt-4">
@@ -33,6 +34,16 @@
         <button class="btn" id="subtitles-tab">Subtitles</button>
     </div>
 
+    <form>
+        <label for="torrentId">Download from a magnet link: </label>
+        <input name="torrentId", placeholder="magnet:" value="magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.empire-js.us%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.fastcast.nz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fsintel.torrent">
+        <button type="submit">Download</button>
+    </form>
+
+    <h2>Log</h2>
+    <div class="log"></div>
+
+
     {% if torrents %}
     <div id="torrents-filter-section" class="tab-section">
         <div class="filter-toggles">
@@ -51,6 +62,7 @@
                     <th>Seeders</th>
                     <th>Leechers</th>
                     <th>Date Uploaded</th>
+                    <th>Stream</th> <!-- Added column for streaming -->
                 </tr>
                 </thead>
                 <tbody id="torrent-table-body">
@@ -65,6 +77,12 @@
                     <td>{{ torrent.seeders }}</td>
                     <td>{{ torrent.leechers }}</td>
                     <td>{{ torrent.date_uploaded }}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm"
+                                onclick="streamTorrent('magnet:?xt=urn:btih:F01AF999E30B3C279915CD9875BE1EFB30079174&dn=Fly.Me.To.The.Moon.2024.1080p.AMZN.WEBRip.1600MB.DD5.1.x264-GalaxyRG&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Fexplodie.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce&tr=udp%3A%2F%2Fipv4.tracker.harry.lu%3A80%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.birkenwald.de%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.moeking.me%3A6969%2Fannounce&tr=udp%3A%2F%2Fopentor.org%3A2710%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fuploads.gamecoast.net%3A6969%2Fannounce&tr=https%3A%2F%2Ftracker.foreverpirates.co%3A443%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=http%3A%2F%2Ftracker.openbittorrent.com%3A80%2Fannounce&tr=udp%3A%2F%2Fopentracker.i2p.rocks%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fcoppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.zer0day.to%3A1337%2Fannounce')">
+                            Stream
+                        </button>
+                    </td>
                 </tr>
                 {% endfor %}
                 </tbody>
@@ -97,150 +115,197 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
     $(document).ready(function() {
+        fetchSubtitles();
 
-    fetchSubtitles();
+        $('#torrents-tab').click(function() {
+            $('.tab-buttons .btn').removeClass('selected');
+            $(this).addClass('selected');
+            $('.tab-section').hide();
+            $('#torrents-filter-section').show();
+        });
 
-    $('#torrents-tab').click(function() {
-        $('.tab-buttons .btn').removeClass('selected');
-        $(this).addClass('selected');
-        $('.tab-section').hide();
-        $('#torrents-filter-section').show();
+        $('#subtitles-tab').click(function() {
+            $('.tab-buttons .btn').removeClass('selected');
+            $(this).addClass('selected');
+            $('.tab-section').hide();
+            $('#subtitles-section').show();
+        });
+
+        let filters = {};
+
+        function filterTorrents() {
+            $('#torrent-table-body tr').each(function() {
+                const title = $(this).data('title');
+                const show = Object.keys(filters).every(filter => title.includes(filter));
+                $(this).toggle(show);
+            });
+        }
+
+        $('.filter-toggles .btn').click(function() {
+            const filter = $(this).attr('title').toLowerCase();
+            $(this).toggleClass('selected');
+            if ($(this).hasClass('selected')) {
+                filters[filter] = true;
+            } else {
+                delete filters[filter];
+            }
+            filterTorrents();
+        });
     });
 
-    $('#subtitles-tab').click(function() {
-        $('.tab-buttons .btn').removeClass('selected');
-        $(this).addClass('selected');
-        $('.tab-section').hide();
-        $('#subtitles-section').show();
-    });
-
-    let filters = {};
-
-    function filterTorrents() {
-        $('#torrent-table-body tr').each(function() {
-            const title = $(this).data('title');
-            const show = Object.keys(filters).every(filter => title.includes(filter));
-            $(this).toggle(show);
+    function fetchAndCopyMagnetLink(torrentUrl) {
+        $.ajax({
+            url: '/get_magnet_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'torrent_url': torrentUrl
+            }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Torrent added to qBittorrent!');
+                } else {
+                    alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch magnet link:', error);
+                alert('Failed to fetch magnet link. Please try again later.');
+            }
         });
     }
 
-    $('.filter-toggles .btn').click(function() {
-        const filter = $(this).attr('title').toLowerCase();
-        $(this).toggleClass('selected');
-        if ($(this).hasClass('selected')) {
-            filters[filter] = true;
-        } else {
-            delete filters[filter];
-        }
-        filterTorrents();
-    });
-});
-
-function fetchAndCopyMagnetLink(torrentUrl) {
-    $.ajax({
-        url: '/get_magnet_link',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            'torrent_url': torrentUrl
-        }),
-        data: JSON.stringify({
-            'torrent_url': torrentUrl,
-            'context': 'movies'
-        }),
-        success: function(response) {
-            if (response.success) {
-                alert('Torrent added to qBittorrent!');
-            } else {
-                alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+    function fetchIMDbLink(torrentUrl) {
+        $.ajax({
+            url: '/get_imdb_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'torrent_url': torrentUrl
+            }),
+            success: function(response) {
+                if (response.success) {
+                    window.open(response.imdb_link, '_blank');
+                } else {
+                    alert('Failed to fetch IMDb link.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch IMDb link:', error);
+                alert('Failed to fetch IMDb link. Please try again later.');
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('Failed to fetch magnet link:', error);
-            alert('Failed to fetch magnet link. Please try again later.');
-        }
-    });
-}
+        });
+    }
 
-function fetchIMDbLink(torrentUrl) {
-    $.ajax({
-        url: '/get_imdb_link',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            'torrent_url': torrentUrl
-        }),
-        success: function(response) {
-            if (response.success) {
-                window.open(response.imdb_link, '_blank');
-            } else {
-                alert('Failed to fetch IMDb link.');
+    function fetchSubtitles() {
+        $.ajax({
+            url: '/search_sub',
+            method: 'POST',
+            data: {
+                title: '{{ movie.title }}',
+                type: 'movie',
+                year: '{{ movie.release }}'
+            },
+            success: function(response) {
+                const subtitles = response.subtitles || [];
+                const $tableBody = $('#subtitles-table-body');
+                $tableBody.empty();
+
+                if (subtitles.length) {
+                    subtitles.forEach(function(subtitle) {
+                        const row = `
+                        <tr class="torrent-item">
+                            <td>${subtitle.versioname}</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm download" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '{{ movie.title }}')">Download</button>
+                            </td>
+                        </tr>`;
+                        $tableBody.append(row);
+                    });
+                } else {
+                    $tableBody.append('<tr><td colspan="2">No subtitles found</td></tr>');
+                }
+            },
+            error: function() {
+                console.error('Failed to fetch subtitles');
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('Failed to fetch IMDb link:', error);
-            alert('Failed to fetch IMDb link. Please try again later.');
-        }
-    });
-}
+        });
+    }
 
-function fetchSubtitles() {
-    $.ajax({
-        url: '/search_sub',
-        method: 'POST',
-        data: {
-            title: '{{ movie.title }}',
-            type: 'movie',
-            year: '{{ movie.release }}'
-        },
-        success: function(response) {
-            const subtitles = response.subtitles || [];
-            const $tableBody = $('#subtitles-table-body');
-            $tableBody.empty();
-
-            if (subtitles.length) {
-                subtitles.forEach(function(subtitle) {
-                    const row = `
-                    <tr class="torrent-item">
-                        <td>${subtitle.versioname}</td>
-                        <td>
-                            <button class="btn btn-primary btn-sm download" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '{{ movie.title }}')">Download</button>
-                        </td>
-                    </tr>`;
-                    $tableBody.append(row);
-                });
-            } else {
-                $tableBody.append('<tr><td colspan="2">No subtitles found</td></tr>');
+    function downloadSubtitle(subId, name, button, title) {
+        $.ajax({
+            url: `/download/${subId}/${encodeURIComponent(name)}`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                subtitle_name: name,
+                movie_title: title
+            }),
+            success: function(response) {
+                if (response.success) {
+                    $(button).text('Downloaded!');
+                } else {
+                    alert('Failed to download subtitle.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to download subtitle:', error);
+                alert('Failed to download subtitle. Please try again later.');
             }
-        },
-        error: function() {
-            console.error('Failed to fetch subtitles');
-        }
-    });
-}
+        });
+    }
+</script>
+<script>
+    console.log('asjdla');
+    const client = new WebTorrent()
 
-function downloadSubtitle(subId, name, button, title) {
-    $.ajax({
-        url: `/download/${subId}/${encodeURIComponent(name)}`,
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            subtitle_name: name,
-            movie_title: title
-        }),
-        success: function(response) {
-            if (response.success) {
-                $(button).text('Downloaded!');
-            } else {
-                alert('Failed to download subtitle.');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Failed to download subtitle:', error);
-            alert('Failed to download subtitle. Please try again later.');
-        }
-    });
-}
+    client.on('error', function (err) {
+      console.error('ERROR: ' + err.message)
+    })
+
+    document.querySelector('form').addEventListener('submit', function (e) {
+      e.preventDefault() // Prevent page refresh
+
+      const torrentId = document.querySelector('form input[name=torrentId]').value
+      log('Adding ' + torrentId)
+      client.add(torrentId, onTorrent)
+    })
+
+    function onTorrent (torrent) {
+      log('Got torrent metadata!')
+      log(
+        'Torrent info hash: ' + torrent.infoHash + ' ' +
+        '<a href="' + torrent.magnetURI + '" target="_blank">[Magnet URI]</a> ' +
+        '<a href="' + torrent.torrentFileBlobURL + '" target="_blank" download="' + torrent.name + '.torrent">[Download .torrent]</a>'
+      )
+
+      // Print out progress every 5 seconds
+      const interval = setInterval(function () {
+        log('Progress: ' + (torrent.progress * 100).toFixed(1) + '%')
+      }, 5000)
+
+      torrent.on('done', function () {
+        log('Progress: 100%')
+        clearInterval(interval)
+      })
+
+      // Render all files into to the page
+      torrent.files.forEach(function (file) {
+        file.appendTo('.log')
+        log('(Blob URLs only work if the file is loaded from a server. "http//localhost" works. "file://" does not.)')
+        file.getBlobURL(function (err, url) {
+          if (err) return log(err.message)
+          log('File done.')
+          log('<a href="' + url + '">Download full file: ' + file.name + '</a>')
+        })
+      })
+    }
+
+    function log (str) {
+      const p = document.createElement('p')
+      p.innerHTML = str
+      document.querySelector('.log').appendChild(p)
+    }
 </script>
 </body>
 </html>
