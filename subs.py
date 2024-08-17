@@ -1,6 +1,8 @@
 import os
 import re
 import shutil
+import threading
+import zipfile
 from json import loads, load
 from os import path
 from time import time
@@ -142,13 +144,13 @@ def download_subtitle(sub_id, name):
         app.logger.info(f"Fetching subtitle from URL: {url}")
         app.logger.info(f"Subtitle name: {name}, Subtitle id: {sub_id}")
 
-        # Download the subtitle file
+        # Download the subtitle .zip file
         response = requests.get(url, verify=False)
         response.raise_for_status()  # Raise an error for HTTP error responses
 
         data = request.get_json()
         movie_title = data.get('movie_title')
-        app.logger.info(f"movie title: {movie_title}")
+        app.logger.info(f"Movie title: {movie_title}")
 
         closest_file_path = find_closest_file(SUB_SEARCH_DIR, movie_title)
         if not closest_file_path:
@@ -163,22 +165,44 @@ def download_subtitle(sub_id, name):
         app.logger.info(f"Content path: {content_path}")
         app.logger.info(f"Media file name: {media_file_name}")
 
-        # Save the file locally (optional, if you want to save it before sending it to the user)
-        filename = f"{media_file_name}.srt"  # Change the extension based on your file type
-        filepath = path.join(SUBS_DIR, filename)
-        with open(filepath, 'wb') as file:
+        # Save the .zip file locally
+        zip_filename = f"{media_file_name}.zip"
+        zip_filepath = os.path.join(SUBS_DIR, zip_filename)
+        with open(zip_filepath, 'wb') as file:
             file.write(response.content)
 
-        # Move the file to the content_path directory
-        destination_filepath = path.join(content_path, filename)
-        app.logger.info(f"Destination path: {destination_filepath}")
-        shutil.move(filepath, destination_filepath)
+        # Extract the .srt file from the .zip archive
+        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+            # Look for the .srt file within the zip archive
+            srt_file = next((f for f in zip_ref.namelist() if f.endswith('.srt')), None)
+            if srt_file:
+                zip_ref.extract(srt_file, SUBS_DIR)
+            else:
+                app.logger.error("No .srt file found in the zip archive.")
+                return jsonify({"success": False, "message": "No .srt file found in the zip archive."}), 400
 
-        return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded successfully."})
+        # Determine the final file path for the .srt file
+        extracted_srt_path = os.path.join(SUBS_DIR, srt_file)
+        final_srt_path = os.path.join(content_path, f"{media_file_name}.heb.srt")
+
+        # Move the .srt file to the content_path directory
+        shutil.move(extracted_srt_path, final_srt_path)
+
+        # Cleanup: remove the downloaded .zip file
+        os.remove(zip_filepath)
+
+        from app import notify_jellyfin
+        threading.Timer(10, notify_jellyfin).start()
+
+        return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded and extracted successfully."})
 
     except requests.RequestException as e:
         app.logger.error(f"Error fetching subtitle file: {e}")
         return jsonify({"success": False, "message": "Failed to download subtitle."}), 500
+
+    except zipfile.BadZipFile as e:
+        app.logger.error(f"Error extracting subtitle file: {e}")
+        return jsonify({"success": False, "message": "Failed to extract subtitle."}), 500
 
 
 def find_closest_file(directory, movie_title):
