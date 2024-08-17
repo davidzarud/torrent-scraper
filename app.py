@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import threading
 from os import makedirs
 
 import requests
@@ -29,6 +30,9 @@ TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
 QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
 QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
+
+JELLYFIN_BASE_URL = os.getenv('JELLYFIN_BASE_URL')
+JELLYFIN_API_KEY = os.getenv('JELLYFIN_API_KEY')
 
 session = requests.Session()
 
@@ -120,6 +124,8 @@ def add_torrent_to_qbittorrent(magnet_link, context):
     try:
         response = session.post(add_torrent_url, data=data)
         response.raise_for_status()
+
+        threading.Timer(5, notify_jellyfin).start()
 
         return True
     except RequestException as e:
@@ -341,7 +347,7 @@ def search_movies():
     query = request.args.get('query', '')
     if query:
         movies_result = search_movies_by_name(query)
-        return render_template('movies.html', movies=movies_result)
+        return render_template('movies.html', movies=movies_result, page=1, total_pages=1)
     return render_template('movies.html', movies=[], page=1, total_pages=1)
 
 
@@ -350,7 +356,7 @@ def search_tvshows():
     query = request.args.get('query', '')
     if query:
         shows_result = search_tvshows_by_name(query)
-        return render_template('tvshows.html', shows=shows_result)
+        return render_template('tvshows.html', shows=shows_result, page=1, total_pages=1)
     return render_template('tvshows.html', shows=[], page=1, total_pages=1)
 
 
@@ -529,6 +535,21 @@ def sanitize_string(query):
     sanitized_query = sanitized_query.replace("&", "")
 
     return sanitized_query
+
+
+def notify_jellyfin():
+    if not JELLYFIN_BASE_URL or not JELLYFIN_API_KEY:
+        print("Jellyfin credentials not set.")
+        return jsonify({'error': 'Jellyfin credentials not set.'}), 400
+
+    scan_library_url = f'{JELLYFIN_BASE_URL}/ScheduledTasks/Running/7738148ffcd07979c7ceb148e06b3aed?api_key={JELLYFIN_API_KEY}'
+    try:
+        response = requests.post(url=scan_library_url)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        app.logger.error(f"Error calling Jellyfin scan library task: {e}")
+        return jsonify({"success": False, "message": "Failed to scan library."}), 500
+
 
 
 if __name__ == '__main__':
