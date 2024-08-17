@@ -347,7 +347,7 @@ def search_movies():
     query = request.args.get('query', '')
     if query:
         movies_result = search_movies_by_name(query)
-        return render_template('movies.html', movies=movies_result)
+        return render_template('movies.html', movies=movies_result, page=1, total_pages=1)
     return render_template('movies.html', movies=[], page=1, total_pages=1)
 
 
@@ -356,7 +356,7 @@ def search_tvshows():
     query = request.args.get('query', '')
     if query:
         shows_result = search_tvshows_by_name(query)
-        return render_template('tvshows.html', shows=shows_result)
+        return render_template('tvshows.html', shows=shows_result, page=1, total_pages=1)
     return render_template('tvshows.html', shows=[], page=1, total_pages=1)
 
 

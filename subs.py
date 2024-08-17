@@ -191,6 +191,10 @@ def find_closest_file(directory, movie_title):
     # Walk through the directory tree
     for root, dirs, files in os.walk(directory):
         for file_name in files:
+            # Check if the file has a .mkv or .mp4 extension
+            if not file_name.lower().endswith(('.mkv', '.mp4')):
+                continue  # Skip files that are not .mkv or .mp4
+
             # Normalize file names for comparison (remove extensions, convert to lowercase)
             normalized_file_name = re.sub(r'\.[^.]+$', '', file_name).lower()
             normalized_title = movie_title.lower()
