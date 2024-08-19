@@ -39,7 +39,7 @@
         </div>
         <button id="search-season-btn" class="btn hidden" onclick="searchEntireSeason()">Search Entire Season</button>
     </div>
-    
+
     <div id="episodes" class="hidden">
         <h3>Episodes</h3>
         <div class="episode-grid">
@@ -74,7 +74,8 @@
             contentType: 'application/json',
             data: JSON.stringify({
                 subtitle_name: name,
-                movie_title: title
+                movie_title: '{{ show.name }}' + ' ({{ show.release_date[:4] }})',
+                context: 'tv'
             }),
             success: function(response) {
                 if (response.success) {
@@ -85,7 +86,7 @@
             },
             error: function(xhr, status, error) {
                 console.error('Failed to download subtitle:', error);
-                alert('Failed to download subtitle. Please try again later.');
+                alert('Failed to download subtitle. Failed to find tv show file.');
             }
         });
     }
@@ -302,7 +303,7 @@
             url: '/get_magnet_link',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ 'torrent_url': torrentUrl, 'context': 'tv' }),
+            data: JSON.stringify({ 'torrent_url': torrentUrl, 'context': 'tv', 'title': '{{ show.name }} ({{ show.release_date[:4] }})'}),
             success: function(response) {
                 if (response.success) {
                     alert('Torrent added to qBittorrent!');

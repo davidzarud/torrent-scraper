@@ -9,7 +9,6 @@ from time import time
 
 import requests
 from flask import Flask, request, jsonify
-from fuzzywuzzy import fuzz
 from unicodedata import normalize, combining
 
 app = Flask(__name__)
@@ -150,17 +149,24 @@ def download_subtitle(sub_id, name):
 
         data = request.get_json()
         movie_title = data.get('movie_title')
+        context = data.get('context')
+        if context == 'tv':
+            tv_show_pattern = re.search(r's\d{2}e\d{2}', name, re.IGNORECASE).group()
+            video_file = find_episode(SUB_SEARCH_DIR, movie_title, context, tv_show_pattern)
+        else:
+            video_file = find_movie(SUB_SEARCH_DIR, movie_title, context)
+
         app.logger.info(f"Movie title: {movie_title}")
 
-        closest_file_path = find_closest_file(SUB_SEARCH_DIR, movie_title)
-        if not closest_file_path:
+        # closest_file_path = find_episode(SUB_SEARCH_DIR, movie_title, context, tv_show_pattern)
+        if not video_file:
             app.logger.error("No matching media file found.")
             return jsonify({"success": False, "message": "No matching media file found."}), 404
 
-        app.logger.info(f"Closest matching file found: {closest_file_path}")
+        app.logger.info(f"Closest matching file found: {video_file}")
 
-        content_path = os.path.dirname(closest_file_path)
-        media_file_name = re.sub(r'\.[^.]+$', '', os.path.basename(closest_file_path))
+        content_path = os.path.dirname(video_file)
+        media_file_name = re.sub(r'\.[^.]+$', '', os.path.basename(video_file))
 
         app.logger.info(f"Content path: {content_path}")
         app.logger.info(f"Media file name: {media_file_name}")
@@ -205,37 +211,69 @@ def download_subtitle(sub_id, name):
         return jsonify({"success": False, "message": "Failed to extract subtitle."}), 500
 
 
-def find_closest_file(directory, movie_title):
-    closest_match = None
-    highest_ratio = 0
+def find_episode(directory, title, context, tv_show_pattern):
+    # Define the base path and target directory
+    base_path = os.path.join(directory, context.lower())
+    target_dir = os.path.join(base_path, title)
 
-    # Check if the movie title contains a season/episode pattern
-    tv_show_pattern = re.search(r's\d{2}e\d{2}', movie_title, re.IGNORECASE)
+    # Check if the target directory exists
+    if not os.path.exists(target_dir):
+        print(f"Directory '{target_dir}' does not exist.")
+        return None
 
-    # Walk through the directory tree
-    for root, dirs, files in os.walk(directory):
+    # Normalize the tv_show_pattern to lowercase
+    normalized_pattern = tv_show_pattern.lower()
+
+    # Walk through the target directory recursively
+    for root, dirs, files in os.walk(target_dir):
         for file_name in files:
             # Check if the file has a .mkv or .mp4 extension
-            if not file_name.lower().endswith(('.mkv', '.mp4')):
-                continue  # Skip files that are not .mkv or .mp4
+            if file_name.lower().endswith(('.mkv', '.mp4')):
+                # Normalize the file name to lowercase
+                normalized_file_name = file_name.lower()
 
-            # Normalize file names for comparison (remove extensions, convert to lowercase)
-            normalized_file_name = re.sub(r'\.[^.]+$', '', file_name).lower()
-            normalized_title = movie_title.lower()
+                # Check if the normalized pattern is in the normalized file name
+                if normalized_pattern in normalized_file_name:
+                    # Return the full path of the matching file
+                    return os.path.join(root, file_name)
 
-            # If it's a TV show, try to match the sXXeYY pattern
-            if tv_show_pattern:
-                episode_pattern = tv_show_pattern.group()
-                if episode_pattern.lower() in normalized_file_name:
-                    ratio = fuzz.ratio(normalized_title, normalized_file_name)
-                else:
-                    continue  # Skip this file if it doesn't contain the episode pattern
-            else:
-                # Use fuzzywuzzy to find the closest match for movies
-                ratio = fuzz.ratio(normalized_title, normalized_file_name)
+    # If no matching file is found, return None
+    print(f"No file with pattern '{tv_show_pattern}' found in '{target_dir}'.")
+    return None
 
-            if ratio > highest_ratio:
-                highest_ratio = ratio
-                closest_match = os.path.join(root, file_name)
 
-    return closest_match
+def find_movie(directory, title, context):
+    # Define the base path and target directory
+    base_path = os.path.join(directory, context.lower())
+    target_dir = os.path.join(base_path, title)
+
+    # Check if the target directory exists
+    if not os.path.exists(target_dir):
+        print(f"Directory '{target_dir}' does not exist.")
+        return None
+
+    movie_file = None
+    largest_size = 0
+
+    # Walk through the target directory recursively
+    for root, dirs, files in os.walk(target_dir):
+        for file_name in files:
+            # Check if the file has a .mkv or .mp4 extension
+            if file_name.lower().endswith(('.mkv', '.mp4')):
+                # Get the full path of the file
+                file_path = os.path.join(root, file_name)
+
+                # Get the size of the file
+                file_size = os.path.getsize(file_path)
+
+                # Check if this is the largest file found so far
+                if file_size > largest_size:
+                    largest_size = file_size
+                    movie_file = file_path
+
+    if movie_file:
+        print(f"Largest file found: {movie_file} ({largest_size} bytes)")
+    else:
+        print("No .mkv or .mp4 files found.")
+
+    return movie_file

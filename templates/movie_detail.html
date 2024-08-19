@@ -146,7 +146,8 @@ function fetchAndCopyMagnetLink(torrentUrl) {
         }),
         data: JSON.stringify({
             'torrent_url': torrentUrl,
-            'context': 'movies'
+            'context': 'movies',
+            'title': '{{ movie.title }} ({{ movie.release_date[:4] }})'
         }),
         success: function(response) {
             if (response.success) {
@@ -191,7 +192,7 @@ function fetchSubtitles() {
         data: {
             title: '{{ movie.title }}',
             type: 'movie',
-            year: '{{ movie.release }}'
+            year: '{{ movie.release_date }}'
         },
         success: function(response) {
             const subtitles = response.subtitles || [];
@@ -226,7 +227,8 @@ function downloadSubtitle(subId, name, button, title) {
         contentType: 'application/json',
         data: JSON.stringify({
             subtitle_name: name,
-            movie_title: title
+            movie_title: title + ' ({{ movie.release_date[:4] }})',
+            context: 'movies'
         }),
         success: function(response) {
             if (response.success) {
@@ -237,7 +239,7 @@ function downloadSubtitle(subId, name, button, title) {
         },
         error: function(xhr, status, error) {
             console.error('Failed to download subtitle:', error);
-            alert('Failed to download subtitle. Please try again later.');
+            alert('Failed to download subtitle. Failed to find movie file.');
         }
     });
 }
