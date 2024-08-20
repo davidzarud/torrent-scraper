@@ -11,15 +11,9 @@ import requests
 from flask import Flask, request, jsonify
 from unicodedata import normalize, combining
 
+from config import TMP_DIR, TMDB_KEY, WIZDOM_DOMAIN, SUB_SEARCH_DIR, SUBS_DIR
+
 app = Flask(__name__)
-
-# Configuration
-TMP_DIR = 'tmp'
-SUBS_DIR = 'subs'
-MY_DOMAIN = 'wizdom.xyz/api'
-
-TMDB_KEY = os.getenv('TMDB_KEY')
-SUB_SEARCH_DIR = os.getenv('SUB_SEARCH_DIR')
 
 
 # Helper Functions
@@ -122,14 +116,14 @@ def search_tmdb(media_type, query, year=None):
 
 def search_by_imdb(imdb_id, season=0, episode=0, version=0):
     filename = f'wizdom.imdb.{imdb_id}.{season}.{episode}.json'
-    url = f"http://{MY_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}&version={version}"
+    url = f"http://{WIZDOM_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}&version={version}"
     return caching_json(filename, url)
 
 
 @app.route('/download/<int:sub_id>/<string:name>', methods=['POST'])
 def download_subtitle(sub_id, name):
     try:
-        url = f"http://{MY_DOMAIN}/files/sub/{sub_id}"
+        url = f"http://{WIZDOM_DOMAIN}/files/sub/{sub_id}"
         response = requests.get(url, verify=False)
         response.raise_for_status()
 

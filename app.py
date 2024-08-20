@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import threading
 from os import makedirs
@@ -11,6 +10,10 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from fuzzywuzzy import fuzz
 from requests.exceptions import RequestException
 
+from config import QBITTORRENT_BASE_URL, QBITTORRENT_USERNAME, QBITTORRENT_PASSWORD, HEADERS, RARBG_BASE_URL, \
+    TMDB_BASE_URL, TMDB_KEY, JELLYFIN_BASE_URL, JELLYFIN_API_KEY
+from services.tmdb_service import get_popular_bluray_movies, get_trending_movies, get_top_rated_movies, \
+    get_top_rated_shows, get_trending_shows, get_popular_running_shows
 from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
 
 app = Flask(__name__)
@@ -18,21 +21,6 @@ app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
 app.add_url_rule('/download/<int:sub_id>/<string:name>', view_func=download_subtitle, methods=['POST'])
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-BASE_URL = "https://rargb.to/"
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
-
-TMDB_KEY = os.getenv('TMDB_KEY')
-TMDB_BASE_URL = 'https://api.themoviedb.org/3'
-
-QBITTORRENT_BASE_URL = os.getenv('QBITTORRENT_BASE_URL')
-QBITTORRENT_USERNAME = os.getenv('QBITTORRENT_USERNAME')
-QBITTORRENT_PASSWORD = os.getenv('QBITTORRENT_PASSWORD')
-
-JELLYFIN_BASE_URL = os.getenv('JELLYFIN_BASE_URL')
-JELLYFIN_API_KEY = os.getenv('JELLYFIN_API_KEY')
 
 session = requests.Session()
 
@@ -76,7 +64,7 @@ def parse_html(html):
             title_column = columns[1].select_one("a")
             if title_column:
                 title = title_column.text
-                link = BASE_URL + title_column['href']
+                link = RARBG_BASE_URL + title_column['href']
                 category = columns[2].text.strip()
                 if category in ["Movies/Bollywood", "Movies/Dubs/Dual Audio", "XXX/Video"]:
                     continue
@@ -120,7 +108,8 @@ def add_torrent_to_qbittorrent(magnet_link, context, title):
             return False
 
     add_torrent_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/add"
-    data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true', 'savepath': f'{context}/{title}'}
+    data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true',
+            'savepath': f'{context}/{title}'}
     try:
         response = session.post(add_torrent_url, data=data)
         response.raise_for_status()
@@ -161,80 +150,6 @@ def movies():
     else:
         movies_result, total_pages = get_top_rated_movies(page)
     return render_template('movies.html', movies=movies_result, page=page, total_pages=total_pages)
-
-
-def get_trending_movies(page):
-    url = f"{TMDB_BASE_URL}/trending/movie/day?language=en-US"
-    params = {
-        'api_key': TMDB_KEY,
-        'page': page
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    total_pages = data.get('total_pages', 1)
-    return data['results'], total_pages
-
-
-def get_trending_shows(page):
-    url = f"{TMDB_BASE_URL}/trending/tv/day?language=en-US"
-    params = {
-        'api_key': TMDB_KEY,
-        'page': page
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    total_pages = data.get('total_pages', 1)
-    return data['results'], total_pages
-
-
-def get_popular_bluray_movies(page):
-    url = f"{TMDB_BASE_URL}/discover/movie"
-    params = {
-        'api_key': TMDB_KEY,
-        'sort_by': 'popularity.desc',
-        'with_release_type': 5,
-        'page': page
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    total_pages = data.get('total_pages', 1)
-    return data['results'], total_pages
-
-
-def get_top_rated_movies(page):
-    url = f"{TMDB_BASE_URL}/movie/top_rated"
-    params = {
-        'api_key': TMDB_KEY,
-        'page': page
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    total_pages = data.get('total_pages', 1)
-    return data['results'], total_pages
-
-
-def get_popular_running_shows(page):
-    url = f"{TMDB_BASE_URL}/trending/tv/week"
-    params = {
-        'api_key': TMDB_KEY,
-        'page': page
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    total_pages = data.get('total_pages', 1)
-    return data['results'], total_pages
-
-
-def get_top_rated_shows(page):
-    url = f"{TMDB_BASE_URL}/tv/top_rated"
-    params = {
-        'api_key': TMDB_KEY,
-        'page': page
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    total_pages = data.get('total_pages', 1)
-    return data['results'], total_pages
 
 
 @app.route('/movie/<int:movie_id>')
@@ -412,7 +327,7 @@ def search_torrents(query):
     all_torrents = []
     query = sanitize_string(query)
     for page in range(1, 4):  # Fetch results from the first 3 pages
-        search_url = f"{BASE_URL}search/{page}/?search={query}"
+        search_url = f"{RARBG_BASE_URL}search/{page}/?search={query}"
         html_content = fetch_html(search_url)
         if html_content:
             all_torrents.extend(parse_html(html_content))
@@ -550,7 +465,6 @@ def notify_jellyfin():
     except requests.RequestException as e:
         app.logger.error(f"Error calling Jellyfin scan library task: {e}")
         return jsonify({"success": False, "message": "Failed to scan library."}), 500
-
 
 
 if __name__ == '__main__':
