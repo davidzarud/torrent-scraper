@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import threading
 from os import makedirs
@@ -6,7 +7,7 @@ from os import makedirs
 import requests
 import unicodedata
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session as tmdb_session
 from fuzzywuzzy import fuzz
 from requests.exceptions import RequestException
 
@@ -17,6 +18,7 @@ from services.tmdb_service import get_popular_bluray_movies, get_trending_movies
 from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
 app.add_url_rule('/download/<int:sub_id>/<string:name>', view_func=download_subtitle, methods=['POST'])
 
@@ -134,9 +136,51 @@ def is_session_valid():
         return False
 
 
+def is_tmdb_session_valid():
+    session_id = tmdb_session.get('tmdb_session_id')
+    if not session_id:
+        return False
+
+    url = f'https://api.themoviedb.org/3/account?api_key={TMDB_KEY}&session_id={session_id}'
+    response = requests.get(url)
+    return response.status_code == 200
+
+
+@app.route('/tmdb-auth')
+def tmdb_auth():
+    request_token_url = "https://api.themoviedb.org/3/authentication/token/new"
+    params = {"api_key": TMDB_KEY}
+    response = requests.get(request_token_url, params=params)
+    request_token = response.json()['request_token']
+
+    auth_url = f'https://www.themoviedb.org/authenticate/{request_token}?redirect_to={url_for("tmdb_callback", _external=True)}'
+    tmdb_session['request_token'] = request_token  # Store the request token in session
+    return redirect(auth_url)
+
+
+@app.route('/tmdb-callback')
+def tmdb_callback():
+    request_token = tmdb_session['request_token']
+    create_session_id_url = "https://api.themoviedb.org/3/authentication/session/new"
+    params = {'api_key': TMDB_KEY}
+    data = {'request_token': request_token}
+
+    response = requests.post(create_session_id_url, json=data, params=params)
+    session_id = response.json().get('session_id')
+
+    if session_id:
+        tmdb_session['tmdb_session_id'] = session_id  # Store the session_id in Flask session
+        return redirect(url_for('movies', sort='trending'))
+    else:
+        return "Failed to create session ID", 400
+
+
 @app.route('/')
 def home():
-    return redirect(url_for('movies', sort='trending'))
+    if not is_tmdb_session_valid():
+        return redirect(url_for('tmdb_auth'))
+    else:
+        return redirect(url_for('movies', sort='trending'))
 
 
 @app.route('/movies')
