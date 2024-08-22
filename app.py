@@ -14,7 +14,7 @@ from requests.exceptions import RequestException
 from config import QBITTORRENT_BASE_URL, QBITTORRENT_USERNAME, QBITTORRENT_PASSWORD, HEADERS, RARBG_BASE_URL, \
     TMDB_BASE_URL, TMDB_KEY, JELLYFIN_BASE_URL, JELLYFIN_API_KEY
 from services.tmdb_service import get_popular_bluray_movies, get_trending_movies, get_top_rated_movies, \
-    get_top_rated_shows, get_trending_shows, get_popular_running_shows
+    get_top_rated_shows, get_trending_shows, get_popular_running_shows, get_movie_watchlist
 from subs import search, TMP_DIR, SUBS_DIR, download_subtitle
 
 app = Flask(__name__)
@@ -191,6 +191,8 @@ def movies():
         movies_result, total_pages = get_popular_bluray_movies(page)
     elif sort == 'trending':
         movies_result, total_pages = get_trending_movies(page)
+    elif sort == 'watchlist':
+        movies_result, total_pages = get_movie_watchlist(page)
     else:
         movies_result, total_pages = get_top_rated_movies(page)
     return render_template('movies.html', movies=movies_result, page=page, total_pages=total_pages)

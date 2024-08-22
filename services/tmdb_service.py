@@ -41,6 +41,21 @@ def get_trending_movies(page):
     return data['results'], total_pages
 
 
+def get_movie_watchlist(page):
+    from app import tmdb_session
+    session_id = tmdb_session.get('tmdb_session_id')
+    url = f'{TMDB_BASE_URL}/account/21427229/watchlist/movies?language=en-US&page=1&sort_by=created_at.asc'
+    params = {
+        'api_key': TMDB_KEY,
+        'page': page,
+        'session_id': session_id
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+    return data['results'], total_pages
+
+
 def get_trending_shows(page):
     url = f"{TMDB_BASE_URL}/trending/tv/day?language=en-US"
     params = {
