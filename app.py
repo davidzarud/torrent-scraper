@@ -200,21 +200,6 @@ def search_torrents_route():
     return jsonify({'torrents': []})
 
 
-@app.route('/get_imdb_link', methods=['POST'])
-def get_imdb_link():
-    data = request.get_json()
-    torrent_url = data.get('torrent_url')
-    if torrent_url:
-        torrent_page_html = fetch_html(torrent_url)
-        if torrent_page_html:
-            soup = BeautifulSoup(torrent_page_html, 'lxml')
-            imdb_link_tag = soup.find('a', href=True, text='IMDb')
-            if imdb_link_tag:
-                imdb_link = imdb_link_tag['href']
-                return jsonify({'imdb_link': imdb_link})
-    return jsonify({'imdb_link': None})
-
-
 if __name__ == '__main__':
     makedirs(TMP_DIR, exist_ok=True)
     makedirs(SUBS_DIR, exist_ok=True)
