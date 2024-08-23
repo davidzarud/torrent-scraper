@@ -2,11 +2,11 @@ import logging
 import re
 from os import makedirs
 
-from bs4 import BeautifulSoup
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session as tmdb_session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session as tmdb_session, send_file, \
+    Response
 
 from config import *
-from services.html_service import fetch_html, search_torrents, fetch_magnet_link
+from services.html_service import search_torrents, fetch_magnet_link
 from services.qbittorrent_service import add_torrent_to_qbittorrent
 from services.tmdb_service import *
 from subs import search, download_subtitle
@@ -24,26 +24,26 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 @app.route('/')
 def home():
     if not is_tmdb_session_valid():
-        return redirect(url_for('tmdb_auth'))
+        return redirect(url_for('tmdb_auth', redirect_to=None))
     else:
         return redirect(url_for('movies', sort='trending'))
 
 
-@app.route('/tmdb-auth')
-def tmdb_auth():
+@app.route('/tmdb-auth/<redirect_to>')
+def tmdb_auth(redirect_to):
     request_token_url = "https://api.themoviedb.org/3/authentication/token/new"
     params = {"api_key": TMDB_KEY}
     response = requests.get(request_token_url, params=params)
     request_token = response.json()['request_token']
 
     auth_url = (f'https://www.themoviedb.org/authenticate/{request_token}'
-                f'?redirect_to={url_for("tmdb_callback", _external=True)}')
+                f'?redirect_to={url_for("tmdb_callback", _external=True, redirect_to=redirect_to)}')
     tmdb_session['request_token'] = request_token  # Store the request token in session
     return redirect(auth_url)
 
 
-@app.route('/tmdb-callback')
-def tmdb_callback():
+@app.route('/tmdb-callback/<redirect_to>')
+def tmdb_callback(redirect_to):
     request_token = tmdb_session['request_token']
     create_session_id_url = "https://api.themoviedb.org/3/authentication/session/new"
     params = {'api_key': TMDB_KEY}
@@ -68,6 +68,7 @@ def movies():
     elif sort == 'trending':
         movies_result, total_pages = get_trending_movies(page)
     elif sort == 'watchlist':
+
         movies_result, total_pages = get_movie_watchlist(page)
     else:
         movies_result, total_pages = get_top_rated_movies(page)
@@ -198,6 +199,19 @@ def search_torrents_route():
         torrents = search_torrents(query)
         return jsonify({'torrents': torrents})
     return jsonify({'torrents': []})
+
+
+@app.route('/stream/<filename>')
+def stream_video(filename):
+    file_path = os.path.join('path_to_your_movie_files', filename)
+    if os.path.exists(file_path):
+        file_ext = os.path.splitext(filename)[1].lower()
+        if file_ext in ['.mp4', '.mkv']:
+            return send_file(file_path, mimetype='video/mp4')  # Default to MP4 if both formats are present
+        else:
+            return "Unsupported file format", 415
+    else:
+        return "File not found", 404
 
 
 if __name__ == '__main__':

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/movie_details.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet" />
 </head>
 <body>
 <div class="container mt-4">
@@ -26,6 +27,16 @@
             <p><strong>User Score:</strong> {{ movie.user_score_percentage }}%</p>
             <p><strong>Overview:</strong> {{ movie.overview }}</p>
         </div>
+    </div>
+
+    <!-- Video Player Section -->
+    <div class="video-player mt-4">
+        <h2>Watch the Movie</h2>
+        <video id="my-video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="360">
+            <source src="{{ url_for('stream_video', filename='movie.mp4') }}" type="video/mp4">
+            <source src="{{ url_for('stream_video', filename='movie.mkv') }}" type="video/mkv">
+            Your browser does not support the video tag.
+        </video>
     </div>
 
     <div class="tab-buttons">
@@ -94,133 +105,133 @@
     </div>
 </div>
 
+<script src="https://vjs.zencdn.net/7.11.4/video.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
+    var player = videojs('my-video');
+</script>
+<script>
     $(document).ready(function() {
+        fetchSubtitles();
 
-    fetchSubtitles();
+        $('#torrents-tab').click(function() {
+            $('.tab-buttons .btn').removeClass('selected');
+            $(this).addClass('selected');
+            $('.tab-section').hide();
+            $('#torrents-filter-section').show();
+        });
 
-    $('#torrents-tab').click(function() {
-        $('.tab-buttons .btn').removeClass('selected');
-        $(this).addClass('selected');
-        $('.tab-section').hide();
-        $('#torrents-filter-section').show();
+        $('#subtitles-tab').click(function() {
+            $('.tab-buttons .btn').removeClass('selected');
+            $(this).addClass('selected');
+            $('.tab-section').hide();
+            $('#subtitles-section').show();
+        });
+
+        let filters = {};
+
+        function filterTorrents() {
+            $('#torrent-table-body tr').each(function() {
+                const title = $(this).data('title');
+                const show = Object.keys(filters).every(filter => title.includes(filter));
+                $(this).toggle(show);
+            });
+        }
+
+        $('.filter-toggles .btn').click(function() {
+            const filter = $(this).attr('title').toLowerCase();
+            $(this).toggleClass('selected');
+            if ($(this).hasClass('selected')) {
+                filters[filter] = true;
+            } else {
+                delete filters[filter];
+            }
+            filterTorrents();
+        });
     });
 
-    $('#subtitles-tab').click(function() {
-        $('.tab-buttons .btn').removeClass('selected');
-        $(this).addClass('selected');
-        $('.tab-section').hide();
-        $('#subtitles-section').show();
-    });
-
-    let filters = {};
-
-    function filterTorrents() {
-        $('#torrent-table-body tr').each(function() {
-            const title = $(this).data('title');
-            const show = Object.keys(filters).every(filter => title.includes(filter));
-            $(this).toggle(show);
+    function fetchAndCopyMagnetLink(torrentUrl) {
+        $.ajax({
+            url: '/get_magnet_link',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'torrent_url': torrentUrl,
+                'context': 'movies',
+                'title': '{{ movie.title }} ({{ movie.release_date[:4] }})'
+            }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Torrent added to qBittorrent!');
+                } else {
+                    alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to fetch magnet link:', error);
+                alert('Failed to fetch magnet link. Please try again later.');
+            }
         });
     }
 
-    $('.filter-toggles .btn').click(function() {
-        const filter = $(this).attr('title').toLowerCase();
-        $(this).toggleClass('selected');
-        if ($(this).hasClass('selected')) {
-            filters[filter] = true;
-        } else {
-            delete filters[filter];
-        }
-        filterTorrents();
-    });
-});
+    function fetchSubtitles() {
+        $.ajax({
+            url: '/search_sub',
+            method: 'POST',
+            data: {
+                title: '{{ movie.title }}',
+                type: 'movie',
+                year: '{{ movie.release_date }}'
+            },
+            success: function(response) {
+                const subtitles = response.subtitles || [];
+                const $tableBody = $('#subtitles-table-body');
+                $tableBody.empty();
 
-function fetchAndCopyMagnetLink(torrentUrl) {
-    $.ajax({
-        url: '/get_magnet_link',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            'torrent_url': torrentUrl
-        }),
-        data: JSON.stringify({
-            'torrent_url': torrentUrl,
-            'context': 'movies',
-            'title': '{{ movie.title }} ({{ movie.release_date[:4] }})'
-        }),
-        success: function(response) {
-            if (response.success) {
-                alert('Torrent added to qBittorrent!');
-            } else {
-                alert('Failed to add torrent to qBittorrent. Error: ' + response.error);
+                if (subtitles.length) {
+                    subtitles.forEach(function(subtitle) {
+                        const row = `
+                        <tr class="torrent-item">
+                            <td>${subtitle.versioname}</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm download" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '{{ movie.title }}')">Download</button>
+                            </td>
+                        </tr>`;
+                        $tableBody.append(row);
+                    });
+                } else {
+                    $tableBody.append('<tr><td colspan="2">No subtitles found</td></tr>');
+                }
+            },
+            error: function() {
+                console.error('Failed to fetch subtitles');
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('Failed to fetch magnet link:', error);
-            alert('Failed to fetch magnet link. Please try again later.');
-        }
-    });
-}
+        });
+    }
 
-function fetchSubtitles() {
-    $.ajax({
-        url: '/search_sub',
-        method: 'POST',
-        data: {
-            title: '{{ movie.title }}',
-            type: 'movie',
-            year: '{{ movie.release_date }}'
-        },
-        success: function(response) {
-            const subtitles = response.subtitles || [];
-            const $tableBody = $('#subtitles-table-body');
-            $tableBody.empty();
-
-            if (subtitles.length) {
-                subtitles.forEach(function(subtitle) {
-                    const row = `
-                    <tr class="torrent-item">
-                        <td>${subtitle.versioname}</td>
-                        <td>
-                            <button class="btn btn-primary btn-sm download" onclick="downloadSubtitle(${subtitle.id}, '${encodeURIComponent(subtitle.versioname)}', this, '{{ movie.title }}')">Download</button>
-                        </td>
-                    </tr>`;
-                    $tableBody.append(row);
-                });
-            } else {
-                $tableBody.append('<tr><td colspan="2">No subtitles found</td></tr>');
+    function downloadSubtitle(subId, name, button, title) {
+        $.ajax({
+            url: `/download/${subId}/${encodeURIComponent(name)}`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                subtitle_name: name,
+                movie_title: title + ' ({{ movie.release_date[:4] }})',
+                context: 'movies'
+            }),
+            success: function(response) {
+                if (response.success) {
+                    $(button).text('Downloaded!');
+                } else {
+                    alert('Failed to download subtitle.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to download subtitle:', error);
+                alert('Failed to download subtitle. Failed to find movie file.');
             }
-        },
-        error: function() {
-            console.error('Failed to fetch subtitles');
-        }
-    });
-}
-
-function downloadSubtitle(subId, name, button, title) {
-    $.ajax({
-        url: `/download/${subId}/${encodeURIComponent(name)}`,
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            subtitle_name: name,
-            movie_title: title + ' ({{ movie.release_date[:4] }})',
-            context: 'movies'
-        }),
-        success: function(response) {
-            if (response.success) {
-                $(button).text('Downloaded!');
-            } else {
-                alert('Failed to download subtitle.');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Failed to download subtitle:', error);
-            alert('Failed to download subtitle. Failed to find movie file.');
-        }
-    });
-}
+        });
+    }
 </script>
 </body>
 </html>
