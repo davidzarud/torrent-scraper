@@ -318,26 +318,6 @@
         });
     }
 
-    function fetchIMDbLink(torrentUrl) {
-        $.ajax({
-            url: '/get_imdb_link',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ 'torrent_url': torrentUrl }),
-            success: function(response) {
-                if (response.success) {
-                    window.open(response.imdb_link, '_blank');
-                } else {
-                    alert('Failed to fetch IMDb link.');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Failed to fetch IMDb link:', error);
-                alert('Failed to fetch IMDb link. Please try again later.');
-            }
-        });
-    }
-
         function filterTorrents() {
         const selectedFilters = Array.from(document.querySelectorAll('.filter-toggles .btn.selected')).map(btn => btn.getAttribute('title'));
         document.querySelectorAll('.torrent-item').forEach(item => {

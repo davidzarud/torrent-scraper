@@ -11,18 +11,73 @@ import requests
 from flask import Flask, request, jsonify
 from unicodedata import normalize, combining
 
+from config import TMP_DIR, TMDB_KEY, WIZDOM_DOMAIN, SUB_SEARCH_DIR, SUBS_DIR
+from services.jellyfin_service import notify_jellyfin
+from services.utils import unescape_html
+
 app = Flask(__name__)
 
-# Configuration
-TMP_DIR = 'tmp'
-SUBS_DIR = 'subs'
-MY_DOMAIN = 'wizdom.xyz/api'
 
-TMDB_KEY = os.getenv('TMDB_KEY')
-SUB_SEARCH_DIR = os.getenv('SUB_SEARCH_DIR')
+# Routes
+@app.route('/search_sub', methods=['POST'])
+def search():
+    title = request.form.get('title')
+    media_type = request.form.get('type')
+    year = request.form.get('year', '')[:4]
+    title, season, episode = extract_media_info(title)
+
+    global_imdb_id = search_tmdb(media_type, title, year)
+    if not global_imdb_id:
+        return jsonify({'subtitles': []})
+
+    results = search_by_imdb(global_imdb_id, season, episode)
+    subtitles = [{'id': result['id'], 'versioname': result['versioname']} for result in results if
+                 'versioname' in result]
+    return jsonify({'subtitles': subtitles})
 
 
-# Helper Functions
+@app.route('/download/<int:sub_id>/<string:name>', methods=['POST'])
+def download_subtitle(sub_id, name):
+    try:
+        url = f"http://{WIZDOM_DOMAIN}/files/sub/{sub_id}"
+        response = requests.get(url, verify=False)
+        response.raise_for_status()
+
+        data = request.get_json()
+        movie_title, context = data.get('movie_title'), data.get('context')
+
+        if context == 'tv':
+            tv_show_pattern = re.search(r's\d{2}e\d{2}', name, re.IGNORECASE).group()
+            video_file = find_media_file(SUB_SEARCH_DIR, movie_title, context, tv_show_pattern)
+        else:
+            video_file = find_media_file(SUB_SEARCH_DIR, movie_title, context, is_movie=True)
+
+        if not video_file:
+            return jsonify({"success": False, "message": "No matching media file found."}), 404
+
+        media_file_name = re.sub(r'\.[^.]+$', '', os.path.basename(video_file))
+        zip_filepath = os.path.join(SUBS_DIR, f"{media_file_name}.zip")
+        with open(zip_filepath, 'wb') as file:
+            file.write(response.content)
+
+        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+            srt_file = next((f for f in zip_ref.namelist() if f.endswith('.srt')), None)
+            if not srt_file:
+                return jsonify({"success": False, "message": "No .srt file found in the zip archive."}), 400
+            zip_ref.extract(srt_file, SUBS_DIR)
+
+        final_srt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.srt")
+        shutil.move(os.path.join(SUBS_DIR, srt_file), final_srt_path)
+        os.remove(zip_filepath)
+
+        threading.Timer(10, lambda: notify_jellyfin()).start()
+
+        return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded and extracted successfully."})
+    except (requests.RequestException, zipfile.BadZipFile) as e:
+        app.logger.error(f"Error during subtitle processing: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 def normalize_str(s):
     normalized = normalize('NFKD', s)
     return ''.join(c for c in normalized if not combining(c))
@@ -56,8 +111,11 @@ def extract_media_info(title):
 
 
 def find_media_file(directory, title, context, pattern=None, is_movie=False):
+
+    title = re.sub(r'[?*/\\":<>|]', '', title)
+    title = unescape_html(title)
     base_path = os.path.join(directory, context.lower())
-    target_dir = os.path.join(base_path, title)
+    target_dir = os.path.join(str(base_path), title)
     if not os.path.exists(target_dir):
         app.logger.error(f"Directory '{target_dir}' does not exist.")
         return None
@@ -79,29 +137,11 @@ def find_media_file(directory, title, context, pattern=None, is_movie=False):
     return best_file
 
 
-# Routes
-@app.route('/search_sub', methods=['POST'])
-def search():
-    title = request.form.get('title')
-    media_type = request.form.get('type')
-    year = request.form.get('year', '')[:4]
-    title, season, episode = extract_media_info(title)
-
-    global_imdb_id = search_tmdb(media_type, title, year)
-    if not global_imdb_id:
-        return jsonify({'subtitles': []})
-
-    results = search_by_imdb(global_imdb_id, season, episode)
-    subtitles = [{'id': result['id'], 'versioname': result['versioname']} for result in results if
-                 'versioname' in result]
-    return jsonify({'subtitles': subtitles})
-
-
 def search_tmdb(media_type, query, year=None):
     normalized_query = normalize_str(query.replace('&amp;', '&'))
     filename = f'wizdom.search.tmdb.{media_type}.{normalized_query}.{year}.json'
-    url = f"https://api.tmdb.org/3/search/{media_type}?api_key={TMDB_KEY}&query={normalized_query}&year={year or ''}".rstrip(
-        '&year=')
+    url = (f"https://api.tmdb.org/3/search/{media_type}?api_key={TMDB_KEY}&query={normalized_query}"
+           f"&year={year or ''}").rstrip('&year=')
 
     json_data = caching_json(filename, url)
     try:
@@ -122,51 +162,9 @@ def search_tmdb(media_type, query, year=None):
 
 def search_by_imdb(imdb_id, season=0, episode=0, version=0):
     filename = f'wizdom.imdb.{imdb_id}.{season}.{episode}.json'
-    url = f"http://{MY_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}&version={version}"
+    url = (f"http://{WIZDOM_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}"
+           f"&version={version}")
     return caching_json(filename, url)
-
-
-@app.route('/download/<int:sub_id>/<string:name>', methods=['POST'])
-def download_subtitle(sub_id, name):
-    try:
-        url = f"http://{MY_DOMAIN}/files/sub/{sub_id}"
-        response = requests.get(url, verify=False)
-        response.raise_for_status()
-
-        data = request.get_json()
-        movie_title, context = data.get('movie_title'), data.get('context')
-
-        if context == 'tv':
-            tv_show_pattern = re.search(r's\d{2}e\d{2}', name, re.IGNORECASE).group()
-            video_file = find_media_file(SUB_SEARCH_DIR, movie_title, context, tv_show_pattern)
-        else:
-            video_file = find_media_file(SUB_SEARCH_DIR, movie_title, context, is_movie=True)
-
-        if not video_file:
-            return jsonify({"success": False, "message": "No matching media file found."}), 404
-
-        media_file_name = re.sub(r'\.[^.]+$', '', os.path.basename(video_file))
-        zip_filepath = os.path.join(SUBS_DIR, f"{media_file_name}.zip")
-        with open(zip_filepath, 'wb') as file:
-            file.write(response.content)
-
-        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
-            srt_file = next((f for f in zip_ref.namelist() if f.endswith('.srt')), None)
-            if not srt_file:
-                return jsonify({"success": False, "message": "No .srt file found in the zip archive."}), 400
-            zip_ref.extract(srt_file, SUBS_DIR)
-
-        final_srt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.srt")
-        shutil.move(os.path.join(SUBS_DIR, srt_file), final_srt_path)
-        os.remove(zip_filepath)
-
-        from app import notify_jellyfin
-        threading.Timer(10, lambda: notify_jellyfin()).start()
-
-        return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded and extracted successfully."})
-    except (requests.RequestException, zipfile.BadZipFile) as e:
-        app.logger.error(f"Error during subtitle processing: {e}")
-        return jsonify({"success": False, "message": str(e)}), 500
 
 
 if __name__ == '__main__':
