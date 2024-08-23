@@ -90,3 +90,58 @@ def get_top_rated_shows(page):
     data = response.json()
     total_pages = data.get('total_pages', 1)
     return data['results'], total_pages
+
+
+def is_tmdb_session_valid():
+    from app import tmdb_session
+    session_id = tmdb_session.get('tmdb_session_id')
+    if not session_id:
+        return False
+
+    url = f'https://api.themoviedb.org/3/account?api_key={TMDB_KEY}&session_id={session_id}'
+    response = requests.get(url)
+    return response.status_code == 200
+
+
+def get_movie_details(movie_id):
+    url = f"{TMDB_BASE_URL}/movie/{movie_id}"
+    params = {'api_key': TMDB_KEY}
+    response = requests.get(url, params=params)
+    return response.json()
+
+
+def search_movies_by_name(query):
+    url = f'https://api.themoviedb.org/3/search/movie'
+    params = {
+        'api_key': TMDB_KEY,
+        'query': query,
+        'language': 'en-US',
+        'page': 1,
+        'include_adult': False
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        return data.get('results', [])
+    else:
+        print(f"Error: Unable to fetch movies from TMDb. Status code: {response.status_code}")
+        return []
+
+
+def search_tv_shows_by_name(query):
+    url = f'https://api.themoviedb.org/3/search/tv'
+    params = {
+        'api_key': TMDB_KEY,
+        'query': query,
+        'language': 'en-US',
+        'page': 1
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        return data.get('results', [])
+    else:
+        print(f"Error: Unable to fetch TV shows from TMDb. Status code: {response.status_code}")
+        return []
