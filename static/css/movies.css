@@ -86,17 +86,17 @@ h1 a {
 
 .watchlist-icon {
     position: absolute;
-    top: 1px;
-    right: 15px;
-    font-size: 18px; /* Slightly reduced font size for better centering */
-    color: #28a745; /* Green color */
+    top: 4px;
+    right: 18px;
+    font-size: 12px; /* Slightly reduced font size for better centering */
+    color: #ff6d00; /* Green color */
     border-radius: 50%; /* Make it a circle */
-    width: 30px; /* Set fixed width for a perfect circle */
-    height: 30px; /* Set fixed height for a perfect circle */
+    width: 24px; /* Set fixed width for a perfect circle */
+    height: 24px; /* Set fixed height for a perfect circle */
     display: flex;
     align-items: center;
     justify-content: center; /* Center the icon */
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0);
 }
 
 

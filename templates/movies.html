@@ -19,7 +19,11 @@
         </a>
         {% if movie.id in session.get('movie_watchlist_ids', []) %}
         <span class="watchlist-icon">
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-bookmark"></i>
+        </span>
+        {% else %}
+        <span class="watchlist-icon">
+            <i class="fas fa-plus"></i>
         </span>
         {% endif %}
     </div>
@@ -27,3 +31,4 @@
 </div>
 {% include "pagination.html" %}
 {% endblock %}
+
