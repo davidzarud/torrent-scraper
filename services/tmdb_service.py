@@ -56,6 +56,23 @@ def get_movie_watchlist(page):
     return data['results'], total_pages
 
 
+def init_watchlist_ids():
+    from app import tmdb_session
+    tmdb_session['movie_watchlist_ids'] = []
+
+    page = 1
+    while True:
+        movies, total_pages = get_movie_watchlist(page)
+        if not movies:
+            break
+        tmdb_session['movie_watchlist_ids'].extend([movie['id'] for movie in movies])
+        if page >= total_pages:
+            break
+        page += 1
+
+    return tmdb_session['movie_watchlist_ids']
+
+
 def get_trending_shows(page):
     url = f"{TMDB_BASE_URL}/trending/tv/day?language=en-US"
     params = {

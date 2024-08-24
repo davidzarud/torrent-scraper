@@ -22,7 +22,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 @app.route('/')
 def home():
-    return redirect(url_for('movies', sort='trending'))
+    if not is_tmdb_session_valid():
+        return redirect(url_for('tmdb_auth', sort='trending'))
+    else:
+        return redirect(url_for('movies', sort='trending'))
 
 
 @app.route('/tmdb-auth/<sort>')
@@ -57,8 +60,11 @@ def tmdb_callback(sort):
 
 @app.route('/movies')
 def movies():
+    init_watchlist_ids()
+
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
+
     if sort == 'popular':
         movies_result, total_pages = get_popular_bluray_movies(page)
     elif sort == 'trending':

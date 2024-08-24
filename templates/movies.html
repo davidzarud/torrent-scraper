@@ -12,11 +12,16 @@
 <h2 class="mt-4">Movies</h2>
 <div class="row movie-grid mt-4">
     {% for movie in movies %}
-    <div class="col-lg-4 col-md-6 col-sm-12 mb-4 movie-item">
+    <div class="col-lg-4 col-md-6 col-sm-12 mb-4 movie-item position-relative">
         <a href="{{ url_for('movie_detail', movie_id=movie.id) }}">
             <img src="https://image.tmdb.org/t/p/w200{{ movie.poster_path }}" alt="{{ movie.title }}">
             <h5>{{ movie.title }}</h5>
         </a>
+        {% if movie.id in session.get('movie_watchlist_ids', []) %}
+        <span class="watchlist-icon">
+            <i class="fas fa-check-circle"></i>
+        </span>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
