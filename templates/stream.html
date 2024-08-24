@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Player</title>
+    <link href="https://cdn.jsdelivr.net/npm/video.js/dist/video-js.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/webtorrent/webtorrent.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
+</head>
+<body>
+
+<video id="video-player" class="video-js vjs-default-skin" controls preload="auto" width="640" height="360">
+    <p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that supports HTML5 video.</p>
+</video>
+
+<script>
+    const client = new WebTorrent();
+    const magnetURI = '{{ magnet_link }}';  // Fetch this from Flask
+
+    client.add(magnetURI, function (torrent) {
+        const file = torrent.files.find(function (file) {
+            return file.name.endsWith('.mp4') || file.name.endsWith('.mkv');
+        });
+
+        if (file) {
+            const videoPlayer = document.getElementById('video-player');
+
+            // Stream the video into the video tag
+            file.renderTo(videoPlayer, {
+                autoplay: true,
+                controls: true
+            });
+
+            // Handle seeking
+            videoPlayer.addEventListener('seeking', function () {
+                const currentTime = videoPlayer.currentTime;
+                const requestedTime = Math.floor(currentTime);
+                console.log('Seeking to: ' + requestedTime);
+                // WebTorrent automatically handles the seeking by prioritizing the blocks
+            });
+        } else {
+            console.error('No suitable video file found in the torrent.');
+        }
+    });
+</script>
+
+</body>
+</html>

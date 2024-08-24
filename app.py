@@ -23,10 +23,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 @app.route('/')
 def home():
-    if not is_tmdb_session_valid():
-        return redirect(url_for('tmdb_auth'))
-    else:
-        return redirect(url_for('movies', sort='trending'))
+    # if not is_tmdb_session_valid():
+    #     return redirect(url_for('tmdb_auth'))
+    # else:
+    #     return redirect(url_for('movies', sort='trending'))
+    return redirect(url_for('stream'))
+
+
+@app.route('/stream')
+def stream():
+    magnet_link = 'your_magnet_link_here'
+    return render_template('stream.html', magnet_link=magnet_link)
 
 
 @app.route('/tmdb-auth')
