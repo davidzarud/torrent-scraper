@@ -2,11 +2,10 @@ import logging
 import re
 from os import makedirs
 
-from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session as tmdb_session
 
 from config import *
-from services.html_service import fetch_html, search_torrents, fetch_magnet_link
+from services.html_service import search_torrents, fetch_magnet_link
 from services.qbittorrent_service import add_torrent_to_qbittorrent
 from services.tmdb_service import *
 from subs import search, download_subtitle
@@ -23,27 +22,24 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 @app.route('/')
 def home():
-    if not is_tmdb_session_valid():
-        return redirect(url_for('tmdb_auth'))
-    else:
-        return redirect(url_for('movies', sort='trending'))
+    return redirect(url_for('movies', sort='trending'))
 
 
-@app.route('/tmdb-auth')
-def tmdb_auth():
+@app.route('/tmdb-auth/<sort>')
+def tmdb_auth(sort):
     request_token_url = "https://api.themoviedb.org/3/authentication/token/new"
     params = {"api_key": TMDB_KEY}
     response = requests.get(request_token_url, params=params)
     request_token = response.json()['request_token']
 
     auth_url = (f'https://www.themoviedb.org/authenticate/{request_token}'
-                f'?redirect_to={url_for("tmdb_callback", _external=True)}')
+                f'?redirect_to={url_for("tmdb_callback", _external=True, sort=sort)}')
     tmdb_session['request_token'] = request_token  # Store the request token in session
     return redirect(auth_url)
 
 
-@app.route('/tmdb-callback')
-def tmdb_callback():
+@app.route('/tmdb-callback/<sort>')
+def tmdb_callback(sort):
     request_token = tmdb_session['request_token']
     create_session_id_url = "https://api.themoviedb.org/3/authentication/session/new"
     params = {'api_key': TMDB_KEY}
@@ -54,7 +50,7 @@ def tmdb_callback():
 
     if session_id:
         tmdb_session['tmdb_session_id'] = session_id  # Store the session_id in Flask session
-        return redirect(url_for('movies', sort='trending'))
+        return redirect(url_for('movies', sort=sort))
     else:
         return "Failed to create session ID", 400
 
@@ -68,6 +64,8 @@ def movies():
     elif sort == 'trending':
         movies_result, total_pages = get_trending_movies(page)
     elif sort == 'watchlist':
+        if not is_tmdb_session_valid():
+            return redirect(url_for('tmdb_auth', sort='watchlist'))
         movies_result, total_pages = get_movie_watchlist(page)
     else:
         movies_result, total_pages = get_top_rated_movies(page)

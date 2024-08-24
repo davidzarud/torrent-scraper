@@ -68,9 +68,6 @@ def login_to_qbittorrent():
     return True
 
 
-qb_cookies = login_to_qbittorrent()
-
-
 def get_torrent_by_title(title):
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
