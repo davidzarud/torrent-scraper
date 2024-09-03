@@ -58,6 +58,21 @@ def get_movie_watchlist(page):
     return data['results'], total_pages
 
 
+def get_tv_watchlist(page):
+    from app import tmdb_session
+    session_id = tmdb_session.get('tmdb_session_id')
+    url = f'{TMDB_BASE_URL}/account/21427229/watchlist/tv?language=en-US&page=1&sort_by=created_at.asc'
+    params = {
+        'api_key': TMDB_KEY,
+        'page': page,
+        'session_id': session_id
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    total_pages = data.get('total_pages', 1)
+    return data['results'], total_pages
+
+
 def toggle_item_watchlist(media_type, action, title_id):
     from app import tmdb_session
     watchlist = True
@@ -85,7 +100,7 @@ def toggle_item_watchlist(media_type, action, title_id):
         return False
 
 
-def init_watchlist_ids():
+def init_movie_watchlist_ids():
     from app import tmdb_session
     tmdb_session['movie_watchlist_ids'] = []
 
@@ -100,6 +115,23 @@ def init_watchlist_ids():
         page += 1
 
     return tmdb_session['movie_watchlist_ids']
+
+
+def init_tv_watchlist_ids():
+    from app import tmdb_session
+    tmdb_session['tv_watchlist_ids'] = []
+
+    page = 1
+    while True:
+        tv_shows, total_pages = get_tv_watchlist(page)
+        if not tv_shows:
+            break
+        tmdb_session['tv_watchlist_ids'].extend([show['id'] for show in tv_shows])
+        if page >= total_pages:
+            break
+        page += 1
+
+    return tmdb_session['tv_watchlist_ids']
 
 
 def get_trending_shows(page):

@@ -67,15 +67,13 @@ def movies():
     if not is_tmdb_session_valid():
         return redirect(url_for('tmdb_auth', sort=sort))
 
-    init_watchlist_ids()
+    init_movie_watchlist_ids()
 
     if sort == 'popular':
         movies_result, total_pages = get_popular_bluray_movies(page)
     elif sort == 'trending':
         movies_result, total_pages = get_trending_movies(page)
     elif sort == 'watchlist':
-        if not is_tmdb_session_valid():
-            return redirect(url_for('tmdb_auth', sort='watchlist'))
         movies_result, total_pages = get_movie_watchlist(page)
     else:
         movies_result, total_pages = get_top_rated_movies(page)
@@ -129,10 +127,18 @@ def search_movies():
 def home_tv():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
+
+    if not is_tmdb_session_valid():
+        return redirect(url_for('tmdb_auth', sort=sort))
+
+    init_tv_watchlist_ids()
+
     if sort == 'top_rated':
         shows, total_pages = get_top_rated_shows(page)
     elif sort == 'trending':
         shows, total_pages = get_trending_shows(page)
+    elif sort == 'watchlist':
+        shows, total_pages = get_tv_watchlist(page)
     else:
         shows, total_pages = get_popular_running_shows(page)
     return render_template('tv_shows.html', shows=shows, page=page, total_pages=total_pages)

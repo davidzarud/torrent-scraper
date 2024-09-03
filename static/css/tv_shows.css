@@ -73,6 +73,31 @@ h1 a {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
+.watchlist-icon {
+    position: absolute;
+    top: 4px;
+    right: 18px;
+    font-size: 12px; /* Slightly reduced font size for better centering */
+    color: #ff6d00; /* Green color */
+    border-radius: 50%; /* Make it a circle */
+    width: 24px; /* Set fixed width for a perfect circle */
+    height: 24px; /* Set fixed height for a perfect circle */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center the icon */
+    background-color: rgba(0, 0, 0, 0);
+    cursor: pointer;
+    transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition */
+}
+
+.watchlist-icon i {
+    font-size: 20px;
+}
+
+.watchlist-icon:hover {
+    transform: scale(1.2); /* Slightly enlarge on hover */
+}
+
 .movie-grid {
     display: flex;
     flex-wrap: wrap;
