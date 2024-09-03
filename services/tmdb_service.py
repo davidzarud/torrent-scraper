@@ -1,3 +1,5 @@
+import logging
+
 import requests
 
 from config import TMDB_BASE_URL, TMDB_KEY
@@ -54,6 +56,33 @@ def get_movie_watchlist(page):
     data = response.json()
     total_pages = data.get('total_pages', 1)
     return data['results'], total_pages
+
+
+def toggle_item_watchlist(media_type, action, title_id):
+    from app import tmdb_session
+    watchlist = True
+    if action == 'remove':
+        watchlist = False
+
+    session_id = tmdb_session.get('tmdb_session_id')
+    url = f'{TMDB_BASE_URL}/account/21427229/watchlist'
+    params = {
+        'api_key': TMDB_KEY,
+        'session_id': session_id
+    }
+    payload = {
+        "media_type": media_type,
+        "media_id": title_id,
+        "watchlist": watchlist
+    }
+
+    try:
+        response = requests.post(url, json=payload, params=params)
+        response.raise_for_status()
+        return True
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error toggling watchlist item: {e}")
+        return False
 
 
 def init_watchlist_ids():

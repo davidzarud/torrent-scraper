@@ -3,6 +3,7 @@
 {% block title %}Popular Blu-ray Movies{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/movies.css') }}">
+<script src="{{ url_for('static', filename='js/movies.js') }}"></script>
 {% endblock %}
 
 {% block search_action %}{{ url_for('search_movies') }}{% endblock %}
@@ -18,12 +19,12 @@
             <h5>{{ movie.title }}</h5>
         </a>
         {% if movie.id in session.get('movie_watchlist_ids', []) %}
-        <span class="watchlist-icon">
-            <i class="fas fa-bookmark"></i>
+        <span class="watchlist-icon" data-movie-id="{{ movie.id }}">
+            <i class="fas fa-bookmark to-watch"></i>
         </span>
         {% else %}
-        <span class="watchlist-icon">
-            <i class="fas fa-plus"></i>
+        <span class="watchlist-icon" data-movie-id="{{ movie.id }}">
+            <i class="far fa-bookmark not-watch"></i>
         </span>
         {% endif %}
     </div>

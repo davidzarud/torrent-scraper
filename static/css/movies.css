@@ -97,6 +97,8 @@ h1 a {
     align-items: center;
     justify-content: center; /* Center the icon */
     background-color: rgba(0, 0, 0, 0);
+    cursor: pointer;
+    transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition */
 }
 
 
@@ -130,6 +132,21 @@ h1 a {
 
 .watchlist-icon i {
     font-size: 20px;
+}
+
+.watchlist-icon:hover {
+    transform: scale(1.2); /* Slightly enlarge on hover */
+}
+
+.icon-transition {
+    transition: transform 0.3s ease, opacity 0.3s ease; /* Add transition */
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.icon-transition-active {
+    opacity: 1;
+    transform: scale(1);
 }
 
 .movie-item h5 {

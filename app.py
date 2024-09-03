@@ -195,6 +195,14 @@ def get_magnet_link():
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
 
 
+@app.route('/tmdb/watchlist/<media_type>/<action>/<title_id>', methods=['POST'])
+def toggle_watchlist(media_type, action, title_id):
+    success = toggle_item_watchlist(media_type, action, title_id)
+    if success:
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'Failed to toggle watchlist item'})
+
+
 @app.route('/search_torrents')
 def search_torrents_route():
     query = request.args.get('query')
