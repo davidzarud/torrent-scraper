@@ -1,4 +1,3 @@
-import logging
 import re
 from os import makedirs
 
@@ -59,13 +58,12 @@ def tmdb_callback(sort):
 def movies():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
+
     if sort == 'popular':
         movies_result, total_pages = get_popular_bluray_movies(page)
     elif sort == 'trending':
         movies_result, total_pages = get_trending_movies(page)
     elif sort == 'watchlist':
-        if not is_tmdb_session_valid():
-            return redirect(url_for('tmdb_auth', sort='watchlist'))
         movies_result, total_pages = get_movie_watchlist(page)
     else:
         movies_result, total_pages = get_top_rated_movies(page)
@@ -119,10 +117,13 @@ def search_movies():
 def home_tv():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
+
     if sort == 'top_rated':
         shows, total_pages = get_top_rated_shows(page)
     elif sort == 'trending':
         shows, total_pages = get_trending_shows(page)
+    elif sort == 'watchlist':
+        shows, total_pages = get_tv_watchlist(page)
     else:
         shows, total_pages = get_popular_running_shows(page)
     return render_template('tv_shows.html', shows=shows, page=page, total_pages=total_pages)
@@ -187,6 +188,14 @@ def get_magnet_link():
             return jsonify({'success': False, 'error': 'Failed to add torrent to qBittorrent'})
     else:
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
+
+
+@app.route('/tmdb/watchlist/<media_type>/<action>/<title_id>', methods=['POST'])
+def toggle_watchlist(media_type, action, title_id):
+    success = toggle_item_watchlist(media_type, action, title_id)
+    if success:
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'Failed to toggle watchlist item'})
 
 
 @app.route('/search_torrents')
