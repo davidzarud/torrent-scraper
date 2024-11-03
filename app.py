@@ -4,7 +4,7 @@ from os import makedirs
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session as tmdb_session
 
 from config import *
-from services.html_service import search_torrents, fetch_magnet_link
+from services.html_service import search_torrents_rarbg, search_torrents_yts, fetch_magnet_link
 from services.qbittorrent_service import add_torrent_to_qbittorrent
 from services.tmdb_service import *
 from subs import search, download_subtitle
@@ -99,7 +99,7 @@ def movie_detail(movie_id):
         'user_score_percentage': user_score_percentage
     }
 
-    torrents = search_torrents(f"{movie_data.get('title')} {movie_data.get('release_date')[:4]}")
+    torrents = search_torrents_yts(f"{movie_data.get('title')} {movie_data.get('release_date')[:4]}")
 
     return render_template('movie_detail.html', movie=movie, torrents=torrents)
 
@@ -202,7 +202,8 @@ def toggle_watchlist(media_type, action, title_id):
 def search_torrents_route():
     query = request.args.get('query')
     if query:
-        torrents = search_torrents(query)
+        # torrents = search_torrents_rarbg(query)
+        torrents = search_torrents_yts(query)
         return jsonify({'torrents': torrents})
     return jsonify({'torrents': []})
 

@@ -1,10 +1,11 @@
 import logging
+import re
 
 import requests
+from bs4 import BeautifulSoup
+from fuzzywuzzy import fuzz
 
 from config import HEADERS, RARBG_BASE_URL
-from bs4 import BeautifulSoup
-
 from services.utils import sanitize_string
 
 
@@ -17,7 +18,34 @@ def fetch_html(url):
         return None
 
 
-def parse_html(html):
+def fetch_magnet_link(torrent_url):
+    html_content = fetch_html(torrent_url)
+    if html_content:
+        soup = BeautifulSoup(html_content, 'lxml')
+        magnet_link = soup.select_one('a[href^="magnet:?"]').get('href')
+        return magnet_link
+    else:
+        return None
+
+
+def search_torrents_rarbg(query):
+    logging.info(f"Searching rarbg torrents with query: {query}")
+    all_torrents = []
+    query = sanitize_string(query)
+    for page in range(1, 4):  # Fetch results from the first 3 pages
+        search_url = f"{RARBG_BASE_URL}search/{page}/?search={query}"
+        html_content = fetch_html(search_url)
+        if html_content:
+            all_torrents.extend(parse_rarbg_html(html_content))
+        else:
+            break
+
+    # Sort torrents by the number of seeders in descending order
+    all_torrents.sort(key=lambda torrent: torrent['seeders'], reverse=True)
+    return all_torrents
+
+
+def parse_rarbg_html(html):
     soup = BeautifulSoup(html, 'lxml')
     torrents = []
 
@@ -50,28 +78,35 @@ def parse_html(html):
     return torrents
 
 
-def fetch_magnet_link(torrent_url):
-    html_content = fetch_html(torrent_url)
-    if html_content:
-        soup = BeautifulSoup(html_content, 'lxml')
-        magnet_link = soup.select_one('a[href^="magnet:?"]').get('href')
-        return magnet_link
-    else:
-        return None
-
-
-def search_torrents(query):
-    logging.info(f"Searching torrents with query: {query}")
+def search_torrents_yts(query):
+    logging.info(f"Searching yts torrents with query: {query}")
     all_torrents = []
     query = sanitize_string(query)
-    for page in range(1, 4):  # Fetch results from the first 3 pages
-        search_url = f"{RARBG_BASE_URL}search/{page}/?search={query}"
-        html_content = fetch_html(search_url)
-        if html_content:
-            all_torrents.extend(parse_html(html_content))
-        else:
-            break
+    search_url = f"https://yts.mx/browse-movies/{query}/all/all/0/latest/0/all"
+    html_content = fetch_html(search_url)
+    if html_content:
+        movie_link = get_yts_link(html_content, query)
+        soup = BeautifulSoup(movie_link, "lxml")
 
-    # Sort torrents by the number of seeders in descending order
-    all_torrents.sort(key=lambda torrent: torrent['seeders'], reverse=True)
-    return all_torrents
+
+def get_yts_link(html, query):
+    soup = BeautifulSoup(html, 'lxml')
+    match = re.match(r"(.+?)\s(\d{4})$", query)
+    if match:
+        movie_name = match.group(1).strip()  # The name part
+        movie_year = match.group(2)  # The year part
+    else:
+        print("No match found.")
+        return None
+
+    movie_url = None
+    best_match = 0
+    movie_links = soup.find_all('a', class_='browse-movie-title')
+    for movie_link in movie_links:
+        movie_title = movie_link.text.strip()
+        similarity = fuzz.ratio(movie_name, movie_title)
+        year_element = movie_link.find_next('div', class_='browse-movie-year')
+        if similarity > best_match and year_element.text.strip() == movie_year:
+            best_match = similarity
+            movie_url = movie_link['href']
+    return movie_url
