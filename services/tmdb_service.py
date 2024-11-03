@@ -170,17 +170,6 @@ def get_top_rated_shows(page):
     return data['results'], total_pages
 
 
-def is_tmdb_session_valid():
-    from app import tmdb_session
-    session_id = tmdb_session.get('tmdb_session_id')
-    if not session_id:
-        return False
-
-    url = f'https://api.themoviedb.org/3/account?api_key={TMDB_KEY}&session_id={session_id}'
-    response = requests.get(url)
-    return response.status_code == 200
-
-
 def get_movie_details(movie_id):
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
     params = {'api_key': TMDB_KEY}

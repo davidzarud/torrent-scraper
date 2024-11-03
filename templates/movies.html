@@ -18,15 +18,6 @@
             <img src="https://image.tmdb.org/t/p/w200{{ movie.poster_path }}" alt="{{ movie.title }}">
             <h5>{{ movie.title }}</h5>
         </a>
-        {% if movie.id in session.get('movie_watchlist_ids', []) %}
-        <span class="watchlist-icon" data-movie-id="{{ movie.id }}">
-            <i class="fas fa-bookmark to-watch"></i>
-        </span>
-        {% else %}
-        <span class="watchlist-icon" data-movie-id="{{ movie.id }}">
-            <i class="far fa-bookmark not-watch"></i>
-        </span>
-        {% endif %}
     </div>
     {% endfor %}
 </div>

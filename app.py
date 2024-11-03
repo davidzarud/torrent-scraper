@@ -1,4 +1,3 @@
-import logging
 import re
 from os import makedirs
 
@@ -22,10 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 @app.route('/')
 def home():
-    if not is_tmdb_session_valid():
-        return redirect(url_for('tmdb_auth', sort='trending'))
-    else:
-        return redirect(url_for('movies', sort='trending'))
+    return redirect(url_for('movies', sort='trending'))
 
 
 @app.route('/tmdb-auth/<sort>')
@@ -60,14 +56,8 @@ def tmdb_callback(sort):
 
 @app.route('/movies')
 def movies():
-
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
-
-    if not is_tmdb_session_valid():
-        return redirect(url_for('tmdb_auth', sort=sort))
-
-    init_movie_watchlist_ids()
 
     if sort == 'popular':
         movies_result, total_pages = get_popular_bluray_movies(page)
@@ -127,11 +117,6 @@ def search_movies():
 def home_tv():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
-
-    if not is_tmdb_session_valid():
-        return redirect(url_for('tmdb_auth', sort=sort))
-
-    init_tv_watchlist_ids()
 
     if sort == 'top_rated':
         shows, total_pages = get_top_rated_shows(page)
