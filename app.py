@@ -2,6 +2,7 @@ import re
 from os import makedirs
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session as tmdb_session
+from flask_cors import CORS
 
 from config import *
 from services.html_service import search_torrents, fetch_magnet_link
@@ -10,6 +11,7 @@ from services.tmdb_service import *
 from subs import search, download_subtitle
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = os.urandom(24)
 app.add_url_rule('/search_sub', view_func=search, methods=['POST'])
 app.add_url_rule('/download/<int:sub_id>/<string:name>', view_func=download_subtitle, methods=['POST'])
@@ -19,43 +21,8 @@ session = requests.Session()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-@app.route('/')
-def home():
-    return redirect(url_for('movies', sort='trending'))
-
-
-@app.route('/tmdb-auth/<sort>')
-def tmdb_auth(sort):
-    request_token_url = "https://api.themoviedb.org/3/authentication/token/new"
-    params = {"api_key": TMDB_KEY}
-    response = requests.get(request_token_url, params=params)
-    request_token = response.json()['request_token']
-
-    auth_url = (f'https://www.themoviedb.org/authenticate/{request_token}'
-                f'?redirect_to={url_for("tmdb_callback", _external=True, sort=sort)}')
-    tmdb_session['request_token'] = request_token  # Store the request token in session
-    return redirect(auth_url)
-
-
-@app.route('/tmdb-callback/<sort>')
-def tmdb_callback(sort):
-    request_token = tmdb_session['request_token']
-    create_session_id_url = "https://api.themoviedb.org/3/authentication/session/new"
-    params = {'api_key': TMDB_KEY}
-    data = {'request_token': request_token}
-
-    response = requests.post(create_session_id_url, json=data, params=params)
-    session_id = response.json().get('session_id')
-
-    if session_id:
-        tmdb_session['tmdb_session_id'] = session_id  # Store the session_id in Flask session
-        return redirect(url_for('movies', sort=sort))
-    else:
-        return "Failed to create session ID", 400
-
-
-@app.route('/movies')
-def movies():
+@app.route('/api/movies')
+def movies_api():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
 
@@ -67,10 +34,16 @@ def movies():
         movies_result, total_pages = get_movie_watchlist(page)
     else:
         movies_result, total_pages = get_top_rated_movies(page)
-    return render_template('movies.html', movies=movies_result, page=page, total_pages=total_pages)
+
+    # Return the movies result and optionally the total pages.
+    return jsonify({
+        'movies': movies_result,
+        'page': page,
+        'total_pages': total_pages
+    })
 
 
-@app.route('/movie/<int:movie_id>')
+@app.route('/api/movie/<int:movie_id>')
 def movie_detail(movie_id):
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
     params = {'api_key': TMDB_KEY}
@@ -100,8 +73,10 @@ def movie_detail(movie_id):
     }
 
     torrents = search_torrents(f"{movie_data.get('title')} {movie_data.get('release_date')[:4]}")
-
-    return render_template('movie_detail.html', movie=movie, torrents=torrents)
+    return jsonify({
+        'title': movie,
+        'torrents': torrents
+    })
 
 
 @app.route('/search_movies')
@@ -113,12 +88,12 @@ def search_movies():
     return render_template('movies.html', movies=[], page=1, total_pages=1)
 
 
-@app.route('/tv')
+@app.route('/api/tv')
 def home_tv():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
 
-    if sort == 'top_rated':
+    if sort == 'top-rated':
         shows, total_pages = get_top_rated_shows(page)
     elif sort == 'trending':
         shows, total_pages = get_trending_shows(page)
@@ -126,10 +101,13 @@ def home_tv():
         shows, total_pages = get_tv_watchlist(page)
     else:
         shows, total_pages = get_popular_running_shows(page)
-    return render_template('tv_shows.html', shows=shows, page=page, total_pages=total_pages)
+    return jsonify({
+        'movies': shows,
+        'page': page,
+        'total_pages': total_pages
+    })
 
-
-@app.route('/show/<int:show_id>')
+@app.route('/api/tv/<int:show_id>')
 def show_detail(show_id):
     # Fetch show details
     url = f"{TMDB_BASE_URL}/tv/{show_id}?append_to_response=credits"
@@ -161,7 +139,10 @@ def show_detail(show_id):
         'user_score_percentage': user_score_percentage
     }
 
-    return render_template('show_detail.html', show=show, seasons=seasons)
+    return jsonify({
+        'title': show,
+        'seasons': seasons
+    })
 
 
 @app.route('/search_tv_shows')
@@ -173,7 +154,7 @@ def search_tv_shows():
     return render_template('tv_shows.html', shows=[], page=1, total_pages=1)
 
 
-@app.route('/get_magnet_link', methods=['POST'])
+@app.route('/api/get_magnet_link', methods=['POST'])
 def get_magnet_link():
     data = request.get_json()
     torrent_url = data.get('torrent_url')
@@ -198,7 +179,7 @@ def toggle_watchlist(media_type, action, title_id):
     return jsonify({'success': False, 'error': 'Failed to toggle watchlist item'})
 
 
-@app.route('/search_torrents')
+@app.route('/api/search_torrents')
 def search_torrents_route():
     query = request.args.get('query')
     if query:
