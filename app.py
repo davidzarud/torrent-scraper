@@ -6,7 +6,7 @@ from json import load
 from os import makedirs, path
 from time import time
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session as tmdb_session
+from flask import Flask, send_from_directory, request, jsonify, redirect, url_for, session as tmdb_session
 from flask_cors import CORS
 from unicodedata import normalize, combining
 
@@ -17,7 +17,7 @@ from services.qbittorrent_service import add_torrent_to_qbittorrent
 from services.tmdb_service import *
 from services.utils import unescape_html
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 CORS(app)
 app.secret_key = os.urandom(24)
 
@@ -351,7 +351,18 @@ def search_by_imdb(imdb_id, season=0, episode=0, version=0):
     return caching_json(filename, url)
 
 
+# Serve the frontend
+@app.route("/")
+def serve_frontend():
+    return send_from_directory("static", "index.html")
+
+
+# Catch-all route for Vue/React-style SPA routing
+@app.route("/<path:path>")
+def catch_all(path):
+    return send_from_directory("static", "index.html")
+
 if __name__ == '__main__':
     makedirs(TMP_DIR, exist_ok=True)
     makedirs(SUBS_DIR, exist_ok=True)
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
