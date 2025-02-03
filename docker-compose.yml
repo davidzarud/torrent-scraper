@@ -15,6 +15,8 @@ services:
       - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
       - TMDB_KEY=${TMDB_KEY}
       - SUB_SEARCH_DIR=${SUB_SEARCH_DIR}
+      - TMDB_BASE_URL=${TMDB_BASE_URL}
+      - TORRENT_BASE_URL=${TORRENT_BASE_URL}
     volumes:
       - .:/app
       - /data/downloads:/downloads
