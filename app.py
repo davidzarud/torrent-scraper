@@ -84,13 +84,18 @@ def movie_detail(movie_id):
     })
 
 
-@app.route('/search_movies')
+@app.route('/api/movies/search')
 def search_movies():
     query = request.args.get('query', '')
+    page = request.args.get('page', 1)
+    response = []
     if query:
-        movies_result = search_movies_by_name(query)
-        return render_template('movies.html', movies=movies_result, page=1, total_pages=1)
-    return render_template('movies.html', movies=[], page=1, total_pages=1)
+        response = search_movies_by_name(query, page)
+    return jsonify({
+        'page': response.get('page'),
+        'total_pages': response.get('total_pages'),
+        'movies': response.get('results')
+    })
 
 
 @app.route('/api/tv')
@@ -151,13 +156,18 @@ def show_detail(show_id):
     })
 
 
-@app.route('/search_tv_shows')
+@app.route('/api/tv/search')
 def search_tv_shows():
     query = request.args.get('query', '')
+    page = request.args.get('page', 1)
+    response = []
     if query:
-        shows_result = search_tv_shows_by_name(query)
-        return render_template('tv_shows.html', shows=shows_result, page=1, total_pages=1)
-    return render_template('tv_shows.html', shows=[], page=1, total_pages=1)
+        response = search_tv_shows_by_name(query, page)
+    return jsonify({
+        'page': response.get('page'),
+        'total_pages': response.get('total_pages'),
+        'movies': response.get('results')
+    })
 
 
 @app.route('/api/get_magnet_link', methods=['POST'])
