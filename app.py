@@ -198,9 +198,7 @@ def search_torrents_route():
 def search():
     title = request.json['title']
     media_type = request.json['type']
-    year = ''
-    if request.json['year']:
-        year = request.json['year'][:4]
+    year = request.json.get('year', '')
     title, season, episode = extract_media_info(title)
 
     global_imdb_id = search_tmdb(media_type, title, year)
