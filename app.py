@@ -1,12 +1,14 @@
+import platform
 import re
 import shutil
 import threading
 import zipfile
+import subprocess
 from json import load
 from os import makedirs, path
 from time import time
 
-from flask import Flask, send_from_directory, request, jsonify, redirect, url_for, session as tmdb_session
+from flask import Flask, send_from_directory, request, jsonify, Response
 from flask_cors import CORS
 from unicodedata import normalize, combining
 
@@ -20,6 +22,8 @@ from services.utils import unescape_html
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 CORS(app)
 app.secret_key = os.urandom(24)
+is_windows = platform.system() == 'Windows'
+ffmpeg_path = os.getenv('FFMPEG_PATH', 'ffmpeg')  # Default to 'ffmpeg' if not set
 
 session = requests.Session()
 
@@ -233,9 +237,9 @@ def download_subtitle(sub_id, name):
 
         if context == 'tv':
             tv_show_pattern = re.search(r's\d{2}e\d{2}', name, re.IGNORECASE).group()
-            video_file = find_media_file(SUB_SEARCH_DIR, movie_title, context, tv_show_pattern)
+            video_file = find_media_file(DOWNLOADS_BASE_PATH, movie_title, context, tv_show_pattern)
         else:
-            video_file = find_media_file(SUB_SEARCH_DIR, movie_title, context, is_movie=True)
+            video_file = find_media_file(DOWNLOADS_BASE_PATH, movie_title, context, is_movie=True)
 
         if not video_file:
             return jsonify({"success": False, "message": "No matching media file found."}), 404
@@ -361,6 +365,39 @@ def serve_frontend():
 @app.route("/<path:path>")
 def catch_all(path):
     return send_from_directory("static", "index.html")
+
+
+@app.route('/stream/<string:torrent_title>')
+def stream(torrent_title):
+
+    if is_windows:
+        mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\test.mkv'
+        # mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\{torrent_title}'
+    else:
+        mkv_file_path = f'{DOWNLOADS_BASE_PATH}/test.mkv'  # Mounted SMB share on Debian
+
+    # Check if the file exists
+    if not os.path.exists(mkv_file_path):
+        return "File not found", 404
+
+    # FFmpeg command to transcode and stream the video
+    ffmpeg_command = [
+        ffmpeg_path,  # Use the FFmpeg path from the environment variable
+        '-i', mkv_file_path,
+        '-f', 'mp4',
+        '-movflags', 'frag_keyframe+empty_moov',
+        '-'
+    ]
+
+    # Start FFmpeg process
+    try:
+        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
+
+    # Stream the output of FFmpeg to the client
+    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
+
 
 if __name__ == '__main__':
     makedirs(TMP_DIR, exist_ok=True)
