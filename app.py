@@ -268,6 +268,90 @@ def download_subtitle(sub_id, name):
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+@app.route('/api/title-exists')
+def title_exists():
+    title = re.sub(r'[<>:"/\\|?*]', '', request.args.get('title'))
+    context = request.args.get('context')
+    seasonEpisode = request.args.get('seasonEpisode')
+    if is_windows:
+        media_file_path = f'\\\\192.168.1.194\\data\\downloads\\{context}\\{title}'
+    else:
+        media_file_path = f'{DOWNLOADS_BASE_PATH}/{context}/{title}'
+
+    exists = directory_contains_media(media_file_path, context, seasonEpisode)
+
+    return jsonify({
+        'exists': exists
+    })
+
+
+@app.route('/stream/<string:torrent_title>')
+def stream(torrent_title):
+    if is_windows:
+        mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\test.mkv'
+        # mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\{torrent_title}'
+    else:
+        mkv_file_path = f'{DOWNLOADS_BASE_PATH}/test.mkv'
+
+    # Check if the file exists
+    if not os.path.exists(mkv_file_path):
+        logging.error("Torrent file not found")
+        return "File not found", 404
+
+    logging.info("Torrent file found")
+    # FFmpeg command to transcode and stream the video
+    ffmpeg_command = [
+        ffmpeg_path,  # Use the FFmpeg path from the environment variable
+        '-i', mkv_file_path,
+        '-f', 'mp4',
+        '-movflags', 'frag_keyframe+empty_moov',
+        '-'
+    ]
+
+    # Start FFmpeg process
+    try:
+        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info("ffmpeg process started")
+    except Exception as e:
+        logging.error(f"ffmpeg process failed: {e}")
+        return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
+
+    # Stream the output of FFmpeg to the client
+    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
+
+
+def directory_contains_media(directory_path, context, seasonEpisode=None, follow_symlinks=False):
+    """
+    Recursively checks if a directory (including subdirectories) contains any media files.
+    - `context`: 'movies' or 'tv'.
+    - `seasonEpisode`: String to search for in filenames (e.g., 'S01E01') for TV shows.
+    - `follow_symlinks`: Set to `True` to follow symbolic links (default: `False` to avoid loops).
+    """
+    if not os.path.isdir(directory_path):
+        return False
+
+    try:
+        for entry in os.scandir(directory_path):
+            if entry.is_file():
+                # Check file extension
+                _, ext = os.path.splitext(entry.name)
+                if ext.lower() in MEDIA_EXTENSIONS:
+                    if context == 'movies':
+                        return True  # Found a media file for movies
+                    elif context == 'tv' and seasonEpisode:
+                        # Check if the filename contains the seasonEpisode string (case-insensitive)
+                        if seasonEpisode.lower() in entry.name.lower():
+                            return True  # Found a matching TV episode
+            elif entry.is_dir(follow_symlinks=follow_symlinks):
+                # Recursively search subdirectories
+                if directory_contains_media(entry.path, context, seasonEpisode, follow_symlinks):
+                    return True  # Propagate success up the recursion
+    except PermissionError:
+        pass  # Skip directories we can't access
+
+    return False  # No media files found in this branch
+
+
 def normalize_str(s):
     normalized = normalize('NFKD', s)
     return ''.join(c for c in normalized if not combining(c))
@@ -366,42 +450,6 @@ def serve_frontend():
 @app.route("/<path:path>")
 def catch_all(path):
     return send_from_directory("static", "index.html")
-
-
-@app.route('/stream/<string:torrent_title>')
-def stream(torrent_title):
-
-    if is_windows:
-        mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\test.mkv'
-        # mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\{torrent_title}'
-    else:
-        mkv_file_path = f'{DOWNLOADS_BASE_PATH}/test.mkv'  # Mounted SMB share on Debian
-
-    # Check if the file exists
-    if not os.path.exists(mkv_file_path):
-        logging.error("Torrent file not found")
-        return "File not found", 404
-
-    logging.info("Torrent file found")
-    # FFmpeg command to transcode and stream the video
-    ffmpeg_command = [
-        ffmpeg_path,  # Use the FFmpeg path from the environment variable
-        '-i', mkv_file_path,
-        '-f', 'mp4',
-        '-movflags', 'frag_keyframe+empty_moov',
-        '-'
-    ]
-
-    # Start FFmpeg process
-    try:
-        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logging.info("ffmpeg process started")
-    except Exception as e:
-        logging.error(f"ffmpeg process failed: {e}")
-        return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
-
-    # Stream the output of FFmpeg to the client
-    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
 
 
 if __name__ == '__main__':
