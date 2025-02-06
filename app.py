@@ -9,7 +9,7 @@ from json import load
 from os import makedirs, path
 from time import time
 
-from flask import Flask, send_from_directory, request, jsonify, Response
+from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 from flask_cors import CORS
 from unicodedata import normalize, combining
 
@@ -288,39 +288,66 @@ def title_exists():
     })
 
 
+# @app.route('/stream/<string:torrent_title>')
+# def stream(torrent_title):
+#
+#     media_file_path = request.args.get('file')
+#     if not os.path.exists(media_file_path):
+#         logging.error("Torrent file not found")
+#         return "File not found", 404
+#
+#     logging.info("Torrent file found")
+#     # FFmpeg command to transcode and stream the video
+#     ffmpeg_command = [
+#         ffmpeg_path,  # Use the FFmpeg path from the environment variable
+#         '-i', media_file_path,
+#         '-f', 'mp4',
+#         '-movflags', 'frag_keyframe+empty_moov',
+#         '-'
+#     ]
+#
+#     # Start FFmpeg process
+#     try:
+#         ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#         logging.info("ffmpeg process started")
+#     except Exception as e:
+#         logging.error(f"ffmpeg process failed: {e}")
+#         return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
+#
+#     # Stream the output of FFmpeg to the client
+#     return Response(ffmpeg_process.stdout, mimetype='video/mp4')
+
 @app.route('/stream/<string:torrent_title>')
-def stream(torrent_title):
-    if is_windows:
-        mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\test.mkv'
-        # mkv_file_path = f'\\\\192.168.1.194\\data\\downloads\\{torrent_title}'
-    else:
-        mkv_file_path = f'{DOWNLOADS_BASE_PATH}/test.mkv'
+def stream_direct(torrent_title):
+    # Get the file path from the query parameters
+    media_file_path = request.args.get('file')
+    if not media_file_path:
+        logging.error("File parameter is missing")
+        return "File parameter is required", 400
 
     # Check if the file exists
-    if not os.path.exists(mkv_file_path):
-        logging.error("Torrent file not found")
+    if not os.path.exists(media_file_path):
+        logging.error(f"File not found: {media_file_path}")
         return "File not found", 404
 
-    logging.info("Torrent file found")
-    # FFmpeg command to transcode and stream the video
-    ffmpeg_command = [
-        ffmpeg_path,  # Use the FFmpeg path from the environment variable
-        '-i', mkv_file_path,
-        '-f', 'mp4',
-        '-movflags', 'frag_keyframe+empty_moov',
-        '-'
-    ]
+    # Check if the file is an MKV file
+    if not media_file_path.lower().endswith('.mkv'):
+        logging.error(f"File is not an MKV: {media_file_path}")
+        return "Only MKV files are supported", 400
 
-    # Start FFmpeg process
+    logging.info(f"Serving MKV file directly: {media_file_path}")
+
+    # Serve the file directly using Flask's send_file
     try:
-        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logging.info("ffmpeg process started")
+        return send_file(
+            media_file_path,
+            mimetype='video/x-matroska',  # MIME type for MKV files
+            as_attachment=False,  # Stream the file instead of forcing a download
+            conditional=True  # Enable conditional requests (e.g., range requests)
+        )
     except Exception as e:
-        logging.error(f"ffmpeg process failed: {e}")
-        return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
-
-    # Stream the output of FFmpeg to the client
-    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
+        logging.error(f"Error serving file: {e}")
+        return "Internal server error", 500
 
 
 def find_media_files(directory_path, context, seasonEpisode=None, follow_symlinks=False):
