@@ -272,16 +272,19 @@ def download_subtitle(sub_id, name):
 def title_exists():
     title = re.sub(r'[<>:"/\\|?*]', '', request.args.get('title'))
     context = request.args.get('context')
-    seasonEpisode = request.args.get('seasonEpisode')
+    season_episode = request.args.get('seasonEpisode')
     if is_windows:
         media_file_path = f'\\\\192.168.1.194\\data\\downloads\\{context}\\{title}'
     else:
         media_file_path = f'{DOWNLOADS_BASE_PATH}/{context}/{title}'
 
-    exists = directory_contains_media(media_file_path, context, seasonEpisode)
+    # Get all media files and check if any exist
+    media_files = find_media_files(media_file_path, context, season_episode)
+    exists = len(media_files) > 0
 
     return jsonify({
-        'exists': exists
+        'exists': exists,
+        'files': media_files  # Return the list of media files
     })
 
 
@@ -320,15 +323,18 @@ def stream(torrent_title):
     return Response(ffmpeg_process.stdout, mimetype='video/mp4')
 
 
-def directory_contains_media(directory_path, context, seasonEpisode=None, follow_symlinks=False):
+def find_media_files(directory_path, context, seasonEpisode=None, follow_symlinks=False):
     """
-    Recursively checks if a directory (including subdirectories) contains any media files.
+    Recursively finds all media files in a directory (including subdirectories).
     - `context`: 'movies' or 'tv'.
     - `seasonEpisode`: String to search for in filenames (e.g., 'S01E01') for TV shows.
     - `follow_symlinks`: Set to `True` to follow symbolic links (default: `False` to avoid loops).
+    Returns a list of dictionaries containing file paths and sizes in GB.
     """
+    media_files = []
+
     if not os.path.isdir(directory_path):
-        return False
+        return media_files
 
     try:
         for entry in os.scandir(directory_path):
@@ -337,19 +343,31 @@ def directory_contains_media(directory_path, context, seasonEpisode=None, follow
                 _, ext = os.path.splitext(entry.name)
                 if ext.lower() in MEDIA_EXTENSIONS:
                     if context == 'movies':
-                        return True  # Found a media file for movies
+                        # Add all media files for movies
+                        file_size_bytes = os.path.getsize(entry.path)
+                        file_size_gb = file_size_bytes / (1024 ** 3)  # Convert bytes to GB
+                        media_files.append({
+                            'name': entry.name,
+                            'path': entry.path,
+                            'size': round(file_size_gb, 2)  # Round to 2 decimal places
+                        })
                     elif context == 'tv' and seasonEpisode:
                         # Check if the filename contains the seasonEpisode string (case-insensitive)
                         if seasonEpisode.lower() in entry.name.lower():
-                            return True  # Found a matching TV episode
+                            file_size_bytes = os.path.getsize(entry.path)
+                            file_size_gb = file_size_bytes / (1024 ** 3)  # Convert bytes to GB
+                            media_files.append({
+                                'name': entry.name,
+                                'path': entry.path,
+                                'size': round(file_size_gb, 2)  # Round to 2 decimal places
+                            })
             elif entry.is_dir(follow_symlinks=follow_symlinks):
                 # Recursively search subdirectories
-                if directory_contains_media(entry.path, context, seasonEpisode, follow_symlinks):
-                    return True  # Propagate success up the recursion
+                media_files.extend(find_media_files(entry.path, context, seasonEpisode, follow_symlinks))
     except PermissionError:
         pass  # Skip directories we can't access
 
-    return False  # No media files found in this branch
+    return media_files
 
 
 def normalize_str(s):
