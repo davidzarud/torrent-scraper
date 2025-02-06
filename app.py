@@ -1,3 +1,4 @@
+import logging
 import platform
 import re
 import shutil
@@ -378,8 +379,10 @@ def stream(torrent_title):
 
     # Check if the file exists
     if not os.path.exists(mkv_file_path):
+        logging.error("Torrent file not found")
         return "File not found", 404
 
+    logging.info("Torrent file found")
     # FFmpeg command to transcode and stream the video
     ffmpeg_command = [
         ffmpeg_path,  # Use the FFmpeg path from the environment variable
@@ -392,7 +395,9 @@ def stream(torrent_title):
     # Start FFmpeg process
     try:
         ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except FileNotFoundError:
+        logging.info("ffmpeg process started")
+    except Exception as e:
+        logging.error(f"ffmpeg process failed: {e}")
         return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
 
     # Stream the output of FFmpeg to the client
