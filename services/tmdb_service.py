@@ -177,38 +177,36 @@ def get_movie_details(movie_id):
     return response.json()
 
 
-def search_movies_by_name(query):
+def search_movies_by_name(query, page):
     url = f'https://api.themoviedb.org/3/search/movie'
     params = {
         'api_key': TMDB_KEY,
         'query': query,
         'language': 'en-US',
-        'page': 1,
+        'page': page,
         'include_adult': False
     }
     response = requests.get(url, params=params)
 
     if response.status_code == 200:
-        data = response.json()
-        return data.get('results', [])
+        return response.json()
     else:
         print(f"Error: Unable to fetch movies from TMDb. Status code: {response.status_code}")
         return []
 
 
-def search_tv_shows_by_name(query):
+def search_tv_shows_by_name(query, page):
     url = f'https://api.themoviedb.org/3/search/tv'
     params = {
         'api_key': TMDB_KEY,
         'query': query,
         'language': 'en-US',
-        'page': 1
+        'page': page
     }
     response = requests.get(url, params=params)
 
     if response.status_code == 200:
-        data = response.json()
-        return data.get('results', [])
+        return response.json()
     else:
         print(f"Error: Unable to fetch TV shows from TMDb. Status code: {response.status_code}")
         return []
