@@ -312,7 +312,7 @@ def stream(torrent_title):
     if request.args.get('file').endswith(".mkv"):
         return stream_and_remux(torrent_title)
     elif request.args.get('file').endswith(".mp4"):
-        return stream_mp4(torrent_title);
+        return stream_mp4(torrent_title)
     else:
         return "Bad file type", 400
 
