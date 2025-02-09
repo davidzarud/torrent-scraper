@@ -1,6 +1,7 @@
 import platform
 import re
 import shutil
+import subprocess
 import threading
 import zipfile
 from json import load
@@ -307,7 +308,16 @@ def title_exists():
 
 
 @app.route('/stream/<string:torrent_title>')
-def stream_direct(torrent_title):
+def stream(torrent_title):
+    if request.args.get('file').endswith(".mkv"):
+        return stream_and_remux(torrent_title)
+    elif request.args.get('file').endswith(".mp4"):
+        return stream_mp4(torrent_title);
+    else:
+        return "Bad file type", 400
+
+
+def stream_mp4(torrent_title):
     media_file_path = request.args.get('file')
 
     if not media_file_path or not os.path.exists(media_file_path):
@@ -321,6 +331,34 @@ def stream_direct(torrent_title):
         mimetype="video/mp4",
         as_attachment=False
     )
+
+
+def stream_and_remux(torrent_title):
+    media_file_path = request.args.get('file')
+    if not os.path.exists(media_file_path):
+        logging.error("Torrent file not found")
+        return "File not found", 404
+
+    logging.info("Torrent file found")
+    # FFmpeg command to transcode and stream the video
+    ffmpeg_command = [
+        ffmpeg_path,  # Use the FFmpeg path from the environment variable
+        '-i', media_file_path,
+        '-f', 'mp4',
+        '-movflags', 'frag_keyframe+empty_moov',
+        '-'
+    ]
+
+    # Start FFmpeg process
+    try:
+        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info("ffmpeg process started")
+    except Exception as e:
+        logging.error(f"ffmpeg process failed: {e}")
+        return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
+
+    # Stream the output of FFmpeg to the client
+    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
 
 
 def find_media_files(directory_path, context, season_episode=None, follow_symlinks=False):
