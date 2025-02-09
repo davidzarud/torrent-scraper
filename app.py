@@ -8,7 +8,7 @@ from json import load
 from os import makedirs, path
 from time import time
 
-from flask import Flask, send_from_directory, request, jsonify, send_file
+from flask import Flask, send_from_directory, request, jsonify, send_file, Response
 from flask_cors import CORS
 from unicodedata import normalize, combining
 
@@ -309,9 +309,9 @@ def title_exists():
 
 @app.route('/stream/<string:torrent_title>')
 def stream(torrent_title):
-    if request.args.get('file').endswith(".mkv"):
+    if request.args.get('file').lower().endswith(".mkv"):
         return stream_and_remux(torrent_title)
-    elif request.args.get('file').endswith(".mp4"):
+    elif request.args.get('file').lower().endswith(".mp4"):
         return stream_mp4(torrent_title)
     else:
         return "Bad file type", 400
@@ -342,11 +342,18 @@ def stream_and_remux(torrent_title):
     logging.info("Torrent file found")
     # FFmpeg command to transcode and stream the video
     ffmpeg_command = [
-        ffmpeg_path,  # Use the FFmpeg path from the environment variable
+        ffmpeg_path,
         '-i', media_file_path,
-        '-f', 'mp4',
-        '-movflags', 'frag_keyframe+empty_moov',
-        '-'
+        '-c:v', 'copy',  # Copy the video codec (no re-encoding)
+        '-map', '0:v:0',  # Select the first video stream
+        '-map', '0:a:m:language:eng',  # Select the audio stream with language "eng"
+        '-c:a', 'aac',  # Encode audio to AAC if necessary
+        '-b:a', '192k',  # Set the audio bitrate
+        '-preset', 'ultrafast',  # Use ultrafast preset for quicker encoding
+        '-tune', 'fastdecode',  # Tune for faster decoding (useful for streaming)
+        '-movflags', 'frag_keyframe+empty_moov',  # Optimize for streaming
+        '-f', 'mp4',  # Output format
+        'pipe:1'  # Streaming to stdout
     ]
 
     # Start FFmpeg process
