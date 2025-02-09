@@ -234,6 +234,7 @@ def download_subtitle(sub_id, name):
         data = request.get_json()
         movie_title, context = data.get('movie_title'), data.get('context')
 
+        # Determine correct video file location
         if context == 'tv':
             tv_show_pattern = re.search(r's\d{2}e\d{2}', name, re.IGNORECASE).group()
             video_file = find_media_file(DOWNLOADS_BASE_PATH, movie_title, context, tv_show_pattern)
@@ -245,22 +246,41 @@ def download_subtitle(sub_id, name):
 
         media_file_name = re.sub(r'\.[^.]+$', '', os.path.basename(video_file))
         zip_filepath = os.path.join(SUBS_DIR, f"{media_file_name}.zip")
+
+        # Save the downloaded ZIP file
         with open(zip_filepath, 'wb') as file:
             file.write(response.content)
 
+        # Extract SRT file from ZIP
         with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
             srt_file = next((f for f in zip_ref.namelist() if f.endswith('.srt')), None)
             if not srt_file:
                 return jsonify({"success": False, "message": "No .srt file found in the zip archive."}), 400
             zip_ref.extract(srt_file, SUBS_DIR)
 
+        # Define final subtitle paths
         final_srt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.srt")
+        final_vtt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.vtt")
+
+        # Move the extracted SRT to its final location
         shutil.move(os.path.join(SUBS_DIR, srt_file), final_srt_path)
+
+        # Convert and save as VTT
+        if not convert_srt_to_vtt(final_srt_path, final_vtt_path):
+            return jsonify({"success": False, "message": "Subtitle saved but failed to convert to VTT."}), 500
+
+        # Cleanup ZIP file
         os.remove(zip_filepath)
 
+        # Notify Jellyfin (asynchronously)
         threading.Timer(10, lambda: notify_jellyfin()).start()
 
-        return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded and extracted successfully."})
+        return jsonify({
+            "success": True,
+            "message": f"Subtitle '{name}' downloaded, extracted, and converted to VTT successfully.",
+            "srt_path": final_srt_path,
+            "vtt_path": final_vtt_path
+        })
     except (requests.RequestException, zipfile.BadZipFile) as e:
         app.logger.error(f"Error during subtitle processing: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -436,6 +456,24 @@ def search_by_imdb(imdb_id, season=0, episode=0, version=0):
     url = (f"http://{WIZDOM_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}"
            f"&version={version}")
     return caching_json(filename, url)
+
+
+def convert_srt_to_vtt(srt_path, vtt_path):
+    """Convert .srt subtitles to .vtt format and save to file."""
+    try:
+        with open(srt_path, "r", encoding="utf-8-sig") as infile:
+            lines = infile.readlines()
+
+        vtt_lines = ["WEBVTT\n\n"]
+        for line in lines:
+            vtt_lines.append(line.replace(",", ".") if "-->" in line else line)
+
+        with open(vtt_path, "w", encoding="utf-8") as outfile:
+            outfile.writelines(vtt_lines)
+        return True
+    except Exception as e:
+        app.logger.error(f"Error converting SRT to VTT: {e}")
+        return False
 
 
 # Serve the frontend
