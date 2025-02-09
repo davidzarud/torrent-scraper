@@ -1,14 +1,13 @@
 import platform
 import re
 import shutil
-import subprocess
 import threading
 import zipfile
 from json import load
 from os import makedirs, path
 from time import time
 
-from flask import Flask, send_from_directory, request, jsonify, Response, stream_with_context
+from flask import Flask, send_from_directory, request, jsonify, send_file
 from flask_cors import CORS
 from unicodedata import normalize, combining
 
@@ -290,64 +289,18 @@ def title_exists():
 @app.route('/stream/<string:torrent_title>')
 def stream_direct(torrent_title):
     media_file_path = request.args.get('file')
+
     if not media_file_path or not os.path.exists(media_file_path):
         logging.error(f"File not found: {media_file_path}")
         return "File not found", 404
 
-    logging.info(f"Starting FFmpeg remuxing for: {media_file_path}")
+    logging.info(f"Serving MP4 file: {media_file_path}")
 
-    ffmpeg_command = [
-        'ffmpeg',
-        '-i', media_file_path,
-        '-c:v', 'copy',
-        '-c:a', 'aac', '-b:a', '192k', '-ac', '2',  # Convert audio to stereo
-        '-movflags', '+frag_keyframe+empty_moov',
-        '-f', 'mp4',
-        '-'
-    ]
-
-    try:
-        ffmpeg_process = subprocess.Popen(
-            ffmpeg_command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            bufsize=0
-        )
-
-        # Log FFmpeg errors
-        def log_ffmpeg_errors():
-            for line in iter(ffmpeg_process.stderr.readline, b''):
-                logging.error(f"FFmpeg error: {line.decode().strip()}")
-
-        threading.Thread(target=log_ffmpeg_errors, daemon=True).start()
-
-        def generate():
-            try:
-                while True:
-                    chunk = ffmpeg_process.stdout.read(4096)
-                    if not chunk:
-                        break
-                    yield chunk
-            except GeneratorExit:
-                ffmpeg_process.terminate()
-                raise
-            finally:
-                ffmpeg_process.kill()
-                logging.info("FFmpeg process terminated")
-
-        return Response(
-            stream_with_context(generate()),
-            mimetype='video/mp4',
-            headers={
-                "Accept-Ranges": "bytes",  # Allow seeking
-                "Content-Type": "video/mp4",
-                "Content-Disposition": "inline"
-            }
-        )
-
-    except Exception as e:
-        logging.error(f"Streaming failed: {e}")
-        return "Internal server error", 500
+    return send_file(
+        media_file_path,
+        mimetype="video/mp4",
+        as_attachment=False
+    )
 
 
 def find_media_files(directory_path, context, season_episode=None, follow_symlinks=False):

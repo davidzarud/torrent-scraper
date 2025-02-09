@@ -64,7 +64,7 @@ def search_torrents(query):
     logging.info(f"Searching torrents with query: {query}")
     all_torrents = []
     query = sanitize_string(query)
-    for page in range(1, 4):  # Fetch results from the first 3 pages
+    for page in range(1, 2):  # Fetch results from the first 3 pages
         search_url = f"{RARBG_BASE_URL}search/{page}/?search={query}"
         html_content = fetch_html(search_url)
         if html_content:
