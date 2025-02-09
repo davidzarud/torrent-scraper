@@ -8,7 +8,7 @@ from json import load
 from os import makedirs, path
 from time import time
 
-from flask import Flask, send_from_directory, request, jsonify, Response, stream_with_context
+from flask import Flask, send_from_directory, request, jsonify, send_file, Response
 from flask_cors import CORS
 from unicodedata import normalize, combining
 
@@ -235,6 +235,7 @@ def download_subtitle(sub_id, name):
         data = request.get_json()
         movie_title, context = data.get('movie_title'), data.get('context')
 
+        # Determine correct video file location
         if context == 'tv':
             tv_show_pattern = re.search(r's\d{2}e\d{2}', name, re.IGNORECASE).group()
             video_file = find_media_file(DOWNLOADS_BASE_PATH, movie_title, context, tv_show_pattern)
@@ -246,22 +247,41 @@ def download_subtitle(sub_id, name):
 
         media_file_name = re.sub(r'\.[^.]+$', '', os.path.basename(video_file))
         zip_filepath = os.path.join(SUBS_DIR, f"{media_file_name}.zip")
+
+        # Save the downloaded ZIP file
         with open(zip_filepath, 'wb') as file:
             file.write(response.content)
 
+        # Extract SRT file from ZIP
         with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
             srt_file = next((f for f in zip_ref.namelist() if f.endswith('.srt')), None)
             if not srt_file:
                 return jsonify({"success": False, "message": "No .srt file found in the zip archive."}), 400
             zip_ref.extract(srt_file, SUBS_DIR)
 
+        # Define final subtitle paths
         final_srt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.srt")
+        final_vtt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.vtt")
+
+        # Move the extracted SRT to its final location
         shutil.move(os.path.join(SUBS_DIR, srt_file), final_srt_path)
+
+        # Convert and save as VTT
+        if not convert_srt_to_vtt(final_srt_path, final_vtt_path):
+            return jsonify({"success": False, "message": "Subtitle saved but failed to convert to VTT."}), 500
+
+        # Cleanup ZIP file
         os.remove(zip_filepath)
 
+        # Notify Jellyfin (asynchronously)
         threading.Timer(10, lambda: notify_jellyfin()).start()
 
-        return jsonify({"success": True, "message": f"Subtitle '{name}' downloaded and extracted successfully."})
+        return jsonify({
+            "success": True,
+            "message": f"Subtitle '{name}' downloaded, extracted, and converted to VTT successfully.",
+            "srt_path": final_srt_path,
+            "vtt_path": final_vtt_path
+        })
     except (requests.RequestException, zipfile.BadZipFile) as e:
         app.logger.error(f"Error during subtitle processing: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -288,66 +308,64 @@ def title_exists():
 
 
 @app.route('/stream/<string:torrent_title>')
-def stream_direct(torrent_title):
+def stream(torrent_title):
+    if request.args.get('file').lower().endswith(".mkv"):
+        return stream_and_remux(torrent_title)
+    elif request.args.get('file').lower().endswith(".mp4"):
+        return stream_mp4(torrent_title)
+    else:
+        return "Bad file type", 400
+
+
+def stream_mp4(torrent_title):
     media_file_path = request.args.get('file')
+
     if not media_file_path or not os.path.exists(media_file_path):
         logging.error(f"File not found: {media_file_path}")
         return "File not found", 404
 
-    logging.info(f"Starting FFmpeg remuxing for: {media_file_path}")
+    logging.info(f"Serving MP4 file: {media_file_path}")
 
+    return send_file(
+        media_file_path,
+        mimetype="video/mp4",
+        as_attachment=False
+    )
+
+
+def stream_and_remux(torrent_title):
+    media_file_path = request.args.get('file')
+    if not os.path.exists(media_file_path):
+        logging.error("Torrent file not found")
+        return "File not found", 404
+
+    logging.info("Torrent file found")
+    # FFmpeg command to transcode and stream the video
     ffmpeg_command = [
-        'ffmpeg',
+        ffmpeg_path,
         '-i', media_file_path,
-        '-c:v', 'copy',
-        '-c:a', 'aac', '-b:a', '192k', '-ac', '2',  # Convert audio to stereo
-        '-movflags', '+frag_keyframe+empty_moov',
-        '-f', 'mp4',
-        '-'
+        '-c:v', 'copy',  # Copy the video codec (no re-encoding)
+        '-map', '0:v:0',  # Select the first video stream
+        '-map', '0:a:m:language:eng',  # Select the audio stream with language "eng"
+        '-c:a', 'aac',  # Encode audio to AAC if necessary
+        '-b:a', '192k',  # Set the audio bitrate
+        '-preset', 'ultrafast',  # Use ultrafast preset for quicker encoding
+        '-tune', 'fastdecode',  # Tune for faster decoding (useful for streaming)
+        '-movflags', 'frag_keyframe+empty_moov',  # Optimize for streaming
+        '-f', 'mp4',  # Output format
+        'pipe:1'  # Streaming to stdout
     ]
 
+    # Start FFmpeg process
     try:
-        ffmpeg_process = subprocess.Popen(
-            ffmpeg_command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            bufsize=0
-        )
-
-        # Log FFmpeg errors
-        def log_ffmpeg_errors():
-            for line in iter(ffmpeg_process.stderr.readline, b''):
-                logging.error(f"FFmpeg error: {line.decode().strip()}")
-
-        threading.Thread(target=log_ffmpeg_errors, daemon=True).start()
-
-        def generate():
-            try:
-                while True:
-                    chunk = ffmpeg_process.stdout.read(4096)
-                    if not chunk:
-                        break
-                    yield chunk
-            except GeneratorExit:
-                ffmpeg_process.terminate()
-                raise
-            finally:
-                ffmpeg_process.kill()
-                logging.info("FFmpeg process terminated")
-
-        return Response(
-            stream_with_context(generate()),
-            mimetype='video/mp4',
-            headers={
-                "Accept-Ranges": "bytes",  # Allow seeking
-                "Content-Type": "video/mp4",
-                "Content-Disposition": "inline"
-            }
-        )
-
+        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info("ffmpeg process started")
     except Exception as e:
-        logging.error(f"Streaming failed: {e}")
-        return "Internal server error", 500
+        logging.error(f"ffmpeg process failed: {e}")
+        return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
+
+    # Stream the output of FFmpeg to the client
+    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
 
 
 def find_media_files(directory_path, context, season_episode=None, follow_symlinks=False):
@@ -483,6 +501,24 @@ def search_by_imdb(imdb_id, season=0, episode=0, version=0):
     url = (f"http://{WIZDOM_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}"
            f"&version={version}")
     return caching_json(filename, url)
+
+
+def convert_srt_to_vtt(srt_path, vtt_path):
+    """Convert .srt subtitles to .vtt format and save to file."""
+    try:
+        with open(srt_path, "r", encoding="utf-8-sig") as infile:
+            lines = infile.readlines()
+
+        vtt_lines = ["WEBVTT\n\n"]
+        for line in lines:
+            vtt_lines.append(line.replace(",", ".") if "-->" in line else line)
+
+        with open(vtt_path, "w", encoding="utf-8") as outfile:
+            outfile.writelines(vtt_lines)
+        return True
+    except Exception as e:
+        app.logger.error(f"Error converting SRT to VTT: {e}")
+        return False
 
 
 # Serve the frontend
