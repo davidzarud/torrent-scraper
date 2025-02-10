@@ -317,6 +317,23 @@ def stream(torrent_title):
         return "Bad file type", 400
 
 
+@app.route('/subtitles/list')
+def list_subtitles():
+    vtt_files = []
+    media_dir = os.path.dirname(request.args.get('file').lower())
+    for file in os.scandir(media_dir):
+        _, ext = os.path.splitext(file.name)
+        if ext == '.vtt':
+            vtt_files.append({'name': file.name, 'path': file.path})
+
+    return jsonify(vtt_files)
+
+
+@app.route('/subtitle')
+def fetch_subtitles():
+    subtitle_path = request.args.get('path')
+    return send_file(subtitle_path, mimetype='text/vtt')
+
 def stream_mp4(torrent_title):
     media_file_path = request.args.get('file')
 
@@ -364,8 +381,23 @@ def stream_and_remux(torrent_title):
         logging.error(f"ffmpeg process failed: {e}")
         return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
 
+    def generate_stream():
+        try:
+            while True:
+                # Read and yield the video data in chunks
+                data = ffmpeg_process.stdout.read(1024 * 16)  # Read 16KB at a time
+                if not data:
+                    break  # End of stream
+                yield data
+        finally:
+            # Cleanup when the client disconnects or stream ends
+            logging.info("Client disconnected, terminating ffmpeg process.")
+            ffmpeg_process.terminate()  # Terminate the ffmpeg process
+            ffmpeg_process.wait()  # Wait for the process to end
+            ffmpeg_process.stdout.close()  # Close the stdout pipe
+
     # Stream the output of FFmpeg to the client
-    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
+    return Response(generate_stream(), mimetype='video/mp4')
 
 
 def find_media_files(directory_path, context, season_episode=None, follow_symlinks=False):
