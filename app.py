@@ -381,23 +381,8 @@ def stream_and_remux(torrent_title):
         logging.error(f"ffmpeg process failed: {e}")
         return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
 
-    def generate_stream():
-        try:
-            while True:
-                # Read and yield the video data in chunks
-                data = ffmpeg_process.stdout.read(1024 * 16)  # Read 16KB at a time
-                if not data:
-                    break  # End of stream
-                yield data
-        finally:
-            # Cleanup when the client disconnects or stream ends
-            logging.info("Client disconnected, terminating ffmpeg process.")
-            ffmpeg_process.terminate()  # Terminate the ffmpeg process
-            ffmpeg_process.wait()  # Wait for the process to end
-            ffmpeg_process.stdout.close()  # Close the stdout pipe
-
     # Stream the output of FFmpeg to the client
-    return Response(generate_stream(), mimetype='video/mp4')
+    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
 
 
 def find_media_files(directory_path, context, season_episode=None, follow_symlinks=False):
