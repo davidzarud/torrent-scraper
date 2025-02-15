@@ -2,10 +2,10 @@ import logging
 
 import requests
 
-from config import HEADERS, RARBG_BASE_URL
+from app.services.config import HEADERS, RARBG_BASE_URL
 from bs4 import BeautifulSoup
 
-from services.utils import sanitize_string
+from app.services.utils import sanitize_string
 
 
 def fetch_html(url):

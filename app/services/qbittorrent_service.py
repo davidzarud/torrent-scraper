@@ -1,16 +1,15 @@
 import threading
 
 import requests
+from app.services import qtorrent_session
+from app.services.config import QBITTORRENT_BASE_URL, QBITTORRENT_USERNAME, QBITTORRENT_PASSWORD
+from app.services.jellyfin_service import notify_jellyfin
+from app.services.utils import extract_season_episode, unescape_html
 from flask import jsonify
 from fuzzywuzzy import fuzz
 
-from config import QBITTORRENT_BASE_URL, QBITTORRENT_USERNAME, QBITTORRENT_PASSWORD
-from services.jellyfin_service import notify_jellyfin
-from services.utils import extract_season_episode, unescape_html
-
 
 def add_torrent_to_qbittorrent(magnet_link, context, title):
-    from app import session
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
         return False
@@ -25,7 +24,7 @@ def add_torrent_to_qbittorrent(magnet_link, context, title):
     data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true',
             'savepath': f'{context}/{title}'}
     try:
-        response = session.post(add_torrent_url, data=data)
+        response = qtorrent_session.post(add_torrent_url, data=data)
         response.raise_for_status()
 
         threading.Timer(5, notify_jellyfin).start()
@@ -37,10 +36,9 @@ def add_torrent_to_qbittorrent(magnet_link, context, title):
 
 
 def is_session_valid():
-    from app import session
     try:
         test_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
-        response = session.get(test_url)
+        response = qtorrent_session.get(test_url)
         response.raise_for_status()
         if response.text != "Ok.":
             raise Exception("Session is not valid.")
@@ -51,21 +49,25 @@ def is_session_valid():
 
 
 def login_to_qbittorrent():
-    from app import session
     login_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
     data = {
         'username': QBITTORRENT_USERNAME,
         'password': QBITTORRENT_PASSWORD
     }
     try:
-        response = session.post(login_url, data=data)
+        response = qtorrent_session.post(login_url, data=data)
         response.raise_for_status()
+
         if response.text != "Ok.":
+            print(f"Failed to log in: {response.text}")
             raise Exception("Failed to login to qBittorrent")
+
+        # Print cookies to ensure session is set
+        print(f"Login successful, session cookies: {qtorrent_session.cookies}")
+        return True
     except requests.exceptions.RequestException as e:
-        print(f"Error adding torrent: {e}")
+        print(f"Error logging in: {e}")
         return False
-    return True
 
 
 def get_torrent_by_title(title):
@@ -84,8 +86,8 @@ def get_torrent_by_title(title):
 
     torrents_info_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/info"
     try:
-        from app import session
-        response = session.get(torrents_info_url)
+
+        response = qtorrent_session.get(torrents_info_url)
         response.raise_for_status()
         torrents = response.json()
     except requests.RequestException as e:
@@ -131,8 +133,8 @@ def get_media_file_name(torrent_hash):
 
     try:
         torrents_files_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/files?hash={torrent_hash}"
-        from app import session
-        response = session.get(torrents_files_url)
+
+        response = qtorrent_session.get(torrents_files_url)
         largest_file = max(response.json(), key=lambda file: file['size'])
         largest_file_name = largest_file['name']
         if '/' in largest_file_name:
