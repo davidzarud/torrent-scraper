@@ -1,11 +1,13 @@
 import re
 
-from flask import Blueprint, jsonify, request
-
+import requests
 from app.services.html_service import fetch_magnet_link, search_torrents
 from app.services.qbittorrent_service import add_torrent_to_qbittorrent
+from flask import Blueprint, jsonify, request
 
 torrents_bp = Blueprint("torrents", __name__, url_prefix="")
+
+qtorrent_session = requests.session()
 
 
 @torrents_bp.route("/api/get_magnet_link", methods=["POST"])

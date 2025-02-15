@@ -1,7 +1,6 @@
 import threading
 
 import requests
-from app.services import qtorrent_session
 from app.services.config import QBITTORRENT_BASE_URL, QBITTORRENT_USERNAME, QBITTORRENT_PASSWORD
 from app.services.jellyfin_service import notify_jellyfin
 from app.services.utils import extract_season_episode, unescape_html
@@ -10,6 +9,7 @@ from fuzzywuzzy import fuzz
 
 
 def add_torrent_to_qbittorrent(magnet_link, context, title):
+    from app.routes.torrents import qtorrent_session
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
         return False
@@ -36,6 +36,7 @@ def add_torrent_to_qbittorrent(magnet_link, context, title):
 
 
 def is_session_valid():
+    from app.routes.torrents import qtorrent_session
     try:
         test_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
         response = qtorrent_session.get(test_url)
@@ -49,6 +50,7 @@ def is_session_valid():
 
 
 def login_to_qbittorrent():
+    from app.routes.torrents import qtorrent_session
     login_url = f"{QBITTORRENT_BASE_URL}/api/v2/auth/login"
     data = {
         'username': QBITTORRENT_USERNAME,
@@ -71,6 +73,7 @@ def login_to_qbittorrent():
 
 
 def get_torrent_by_title(title):
+    from app.routes.torrents import qtorrent_session
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
         return jsonify({'error': 'qBittorrent credentials not set.'}), 400
@@ -119,6 +122,7 @@ def get_torrent_by_title(title):
 
 
 def get_media_file_name(torrent_hash):
+    from app.routes.torrents import qtorrent_session
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
         return jsonify({'error': 'qBittorrent credentials not set.'}), 400
