@@ -1,6 +1,7 @@
 import requests
 from flask import Blueprint, jsonify, request
 
+from app.services import tmdb_service
 from app.services.config import TMDB_BASE_URL, TMDB_KEY
 from app.services.tmdb_service import get_top_rated_shows, get_trending_shows, get_tv_watchlist, \
     get_popular_running_shows, search_tv_shows_by_name
@@ -31,10 +32,7 @@ def home_tv():
 @tv_shows_bp.route("/api/tv/<int:show_id>", methods=["GET"])
 def show_detail(show_id):
     # Fetch show details
-    url = f"{TMDB_BASE_URL}/tv/{show_id}?append_to_response=credits"
-    params = {'api_key': TMDB_KEY}
-    response = requests.get(url, params=params)
-    show_data = response.json()
+    show_data = tmdb_service.get_tv_show_details(show_id)
 
     # Fetch seasons and episodes
     seasons = show_data.get('seasons', [])

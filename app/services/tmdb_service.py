@@ -74,64 +74,6 @@ def get_tv_watchlist(page):
     return data['results'], total_pages
 
 
-def toggle_item_watchlist(media_type, action, title_id):
-    watchlist = True
-    if action == 'remove':
-        watchlist = False
-
-    session_id = tmdb_session.get('tmdb_session_id')
-    url = f'{TMDB_BASE_URL}/account/21427229/watchlist'
-    params = {
-        'api_key': TMDB_KEY,
-        'session_id': session_id
-    }
-    payload = {
-        "media_type": media_type,
-        "media_id": title_id,
-        "watchlist": watchlist
-    }
-
-    try:
-        response = requests.post(url, json=payload, params=params)
-        response.raise_for_status()
-        return True
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error toggling watchlist item: {e}")
-        return False
-
-
-def init_movie_watchlist_ids():
-    tmdb_session['movie_watchlist_ids'] = []
-
-    page = 1
-    while True:
-        movies, total_pages = get_movie_watchlist(page)
-        if not movies:
-            break
-        tmdb_session['movie_watchlist_ids'].extend([movie['id'] for movie in movies])
-        if page >= total_pages:
-            break
-        page += 1
-
-    return tmdb_session['movie_watchlist_ids']
-
-
-def init_tv_watchlist_ids():
-    tmdb_session['tv_watchlist_ids'] = []
-
-    page = 1
-    while True:
-        tv_shows, total_pages = get_tv_watchlist(page)
-        if not tv_shows:
-            break
-        tmdb_session['tv_watchlist_ids'].extend([show['id'] for show in tv_shows])
-        if page >= total_pages:
-            break
-        page += 1
-
-    return tmdb_session['tv_watchlist_ids']
-
-
 def get_trending_shows(page):
     url = f"{TMDB_BASE_URL}/trending/tv/day?language=en-US"
     params = {
@@ -175,6 +117,20 @@ def get_movie_details(movie_id):
     return response.json()
 
 
+def get_movie_credits(movie_id):
+    credits_url = f"{TMDB_BASE_URL}/movie/{movie_id}/credits"
+    params = {'api_key': TMDB_KEY}
+    credits_response = requests.get(credits_url, params=params)
+    return credits_response.json()
+
+
+def get_tv_show_details(show_id):
+    url = f"{TMDB_BASE_URL}/tv/{show_id}?append_to_response=credits"
+    params = {'api_key': TMDB_KEY}
+    response = requests.get(url, params=params)
+    return response.json()
+
+
 def search_movies_by_name(query, page):
     url = f'https://api.themoviedb.org/3/search/movie'
     params = {
@@ -182,7 +138,7 @@ def search_movies_by_name(query, page):
         'query': query,
         'language': 'en-US',
         'page': page,
-        'include_adult': False
+        'include_adult': True
     }
     response = requests.get(url, params=params)
 
@@ -199,7 +155,8 @@ def search_tv_shows_by_name(query, page):
         'api_key': TMDB_KEY,
         'query': query,
         'language': 'en-US',
-        'page': page
+        'page': page,
+        'include_adult': True
     }
     response = requests.get(url, params=params)
 

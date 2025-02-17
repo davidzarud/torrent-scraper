@@ -1,6 +1,7 @@
 import requests
 from flask import Blueprint, jsonify, request
 
+from app.services import tmdb_service
 from app.services.config import TMDB_BASE_URL, TMDB_KEY
 from app.services.html_service import search_torrents
 from app.services.tmdb_service import get_popular_bluray_movies, get_trending_movies, get_movie_watchlist, \
@@ -33,17 +34,13 @@ def get_movies():
 
 @movies_bp.route("/api/movie/<int:movie_id>", methods=["GET"])
 def movie_detail(movie_id):
-    url = f"{TMDB_BASE_URL}/movie/{movie_id}"
-    params = {'api_key': TMDB_KEY}
-    response = requests.get(url, params=params)
-    movie_data = response.json()
+
+    movie_data = tmdb_service.get_movie_details(movie_id)
 
     genres = [genre['name'] for genre in movie_data.get('genres', [])]
     genre_string = ', '.join(genres)
 
-    credits_url = f"{TMDB_BASE_URL}/movie/{movie_id}/credits"
-    credits_response = requests.get(credits_url, params=params)
-    credits_data = credits_response.json()
+    credits_data = tmdb_service.get_movie_credits(movie_id)
     cast = [member['name'] for member in credits_data.get('cast', [])[:5]]
     cast_string = ', '.join(cast)
 
