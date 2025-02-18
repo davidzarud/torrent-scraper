@@ -1,5 +1,7 @@
 import os
 
+ffmpeg_path = os.getenv('FFMPEG_PATH', 'ffmpeg')  # Default to 'ffmpeg' if not set
+
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/91.0.4472.124 Safari/537.36'
@@ -25,6 +27,6 @@ JELLYFIN_API_KEY = os.getenv('JELLYFIN_API_KEY')
 RARBG_BASE_URL = "https://rargb.to/"
 DOWNLOADS_BASE_PATH = os.getenv('DOWNLOADS_BASE_PATH')
 DASH_DIRECTORY = os.getenv('DASH_DIRECTORY')
-TMP_DIR = 'tmp'
-SUBS_DIR = 'subs'
+TMP_DIR = '../../tmp'
+SUBS_DIR = '../../subs'
 WIZDOM_DOMAIN = 'wizdom.xyz/api'
