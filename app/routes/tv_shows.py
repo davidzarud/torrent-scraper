@@ -33,6 +33,7 @@ def home_tv():
 def show_detail(show_id):
     # Fetch show details
     show_data = tmdb_service.get_tv_show_details(show_id)
+    params = {'api_key': TMDB_KEY}
 
     # Fetch seasons and episodes
     seasons = show_data.get('seasons', [])

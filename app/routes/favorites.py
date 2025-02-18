@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 
@@ -78,22 +79,24 @@ def get_favorites():
 
 @favorites_bp.route('/api/recommendations/<int:tmdb_id>', methods=['GET'])
 def get_recommendations(tmdb_id):
-    type = request.args.get('type')
-    if type == 'movies':
+    media_type = request.args.get('type')
+    if media_type == 'movies':
         title = tmdb_service.get_movie_details(tmdb_id).get('title')
-        type = "movie"
+        media_type = "movie"
     else:
         title = tmdb_service.get_tv_show_details(tmdb_id).get('name')
-        type = "tv show"
+        media_type = "tv show"
     try:
         model = genai.GenerativeModel("gemini-pro")
         prompt = (
-            f"You now assume a role of a movie and tv show expert. Based on the {type} {title} suggest 20 movies and 20 tv "
+            f"You now assume a role of a movie and tv show expert. Based on the {media_type} {title} suggest 20 movies and 20 tv "
             f"shows that i might like if i like this title. List movies first with each movie in its own row. "
             f"surround each movie with *** at the beginning and at the end. Underneath that list tv shows with "
             f"each tv show in its own row. surround each tv show with *** at the beginning and at the end.")
 
+        logging.info(f"Searching recommendations for: {title}")
         response = model.generate_content(prompt)
+        logging.info("AI model responded")
 
         recommendations = response.text
 
@@ -117,9 +120,11 @@ def get_recommendations(tmdb_id):
                                          'title': recommended_tv_show.get('name'),
                                          'imageUrl': 'https://image.tmdb.org/t/p/w92' + recommended_tv_show.get('poster_path')})
 
+        logging.info("AI model returned recommendations")
         return jsonify({"movies": recommended_movies, "shows": recommended_tv_shows})
 
     except Exception as e:
+        logging.error(f"AI model encountered an exception: {e}")
         return jsonify({"movies": [], "shows": []})
 
 
