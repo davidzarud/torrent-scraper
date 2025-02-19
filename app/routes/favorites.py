@@ -90,10 +90,12 @@ def get_recommendations(tmdb_id):
         model = genai.GenerativeModel("gemini-pro")
         prompt = (
             f"You now assume a role of a movie and tv show expert. Based on the {media_type} {title} suggest 20 movies and 20 tv "
-            f"shows that i might like if i like this title. List movies first with each movie in its own row. the heading lines are "
-            f"***Movies*** and ***TV Shows***. surround each movie with *** at the beginning and at the end. Underneath that list tv shows with "
-            f"each tv show in its own row. surround each tv show with *** at the beginning and at the end. You should be extremely strict "
-            f"about the formatting")
+            f"shows that i might like if i like this title. Do not be very obvious with your choices, for example if the title is a "
+            f"marvel movie don't just suggest other marvel movies, think outside of the box. Try to think of an overall theme and "
+            f"atmosphere of a movie before you suggest. try to avoid suggesting sequels/prequels. List movies first with each movie "
+            f"in its own row. the heading lines are ***Movies*** and ***TV Shows***. surround each movie with *** at the beginning "
+            f"and at the end. Underneath that list tv shows with each tv show in its own row. surround each tv show with *** at the "
+            f"beginning and at the end. You should be extremely strict about the formatting")
 
         logging.info(f"Searching recommendations for: {title}")
         response = model.generate_content(prompt)
