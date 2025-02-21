@@ -43,6 +43,19 @@ def convert_srt_to_vtt(srt_path, vtt_path):
         return False
 
 
+def save_heb_sub(srt_path, heb_srt_path):
+    try:
+        with open(srt_path, "r", encoding="utf-8-sig") as infile:
+            lines = infile.readlines()
+
+        with open(heb_srt_path, "w", encoding="utf-8") as outfile:
+            outfile.writelines(lines)
+        return True
+    except Exception as e:
+        logging.error(f"Error writing heb srt: {e}")
+        return False
+
+
 def search_by_imdb(imdb_id, season=0, episode=0, version=0):
     filename = f'wizdom.imdb.{imdb_id}.{season}.{episode}.json'
     url = (f"http://{WIZDOM_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}"

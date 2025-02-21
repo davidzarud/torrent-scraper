@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify, request
 
 from app.services.config import WIZDOM_DOMAIN, SUBS_DIR, DOWNLOADS_BASE_PATH
 from app.services.jellyfin_service import notify_jellyfin
-from app.services.subtitle_service import search_by_imdb, convert_srt_to_vtt
+from app.services.subtitle_service import search_by_imdb, convert_srt_to_vtt, save_heb_sub
 from app.services.tmdb_service import search_tmdb
 from app.services.utils import extract_media_info, find_media_file
 
@@ -69,11 +69,13 @@ def download_subtitle(sub_id, name):
             zip_ref.extract(srt_file, SUBS_DIR)
 
         # Define final subtitle paths
-        final_srt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.srt")
-        final_vtt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.heb.vtt")
+        final_srt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.srt")
+        final_vtt_path = os.path.join(os.path.dirname(video_file), f"{media_file_name}.vtt")
 
         # Move the extracted SRT to its final location
         shutil.move(os.path.join(SUBS_DIR, srt_file), final_srt_path)
+
+        save_heb_sub(final_srt_path, str.replace(final_srt_path, 'srt', 'heb.srt'))
 
         # Convert and save as VTT
         if not convert_srt_to_vtt(final_srt_path, final_vtt_path):
