@@ -3,10 +3,10 @@ import os
 import re
 import subprocess
 
-from flask import Blueprint, jsonify, request, send_file, Response, redirect, url_for
+from flask import Blueprint, jsonify, request, send_file, Response, redirect, url_for, send_from_directory
 
 from app.services.config import DOWNLOADS_BASE_PATH, DASH_OUTPUT_DIR
-from app.services.stream_service import find_media_files, stream_mp4, process_mkv_to_dash
+from app.services.stream_service import find_media_files, process_mkv_to_dash
 from app.services.utils import is_windows
 
 stream_bp = Blueprint("stream", __name__, url_prefix="")
@@ -48,16 +48,27 @@ def stream(torrent_title):
     # Generate DASH files if not present
     if not os.path.exists(manifest_path):
         ffmpeg_command = [
-            "ffmpeg", "-i", file_param,
-            "-map", "0:v:0", "-map", "0:a:m:language:eng",
-            "-c:v", "copy", "-c:a", "aac",
-            "-b:a", "192k", "-preset", "ultrafast",
-            "-f", "dash",
-            "-seg_duration", "4",
-            "-use_timeline", "1",
-            "-use_template", "1",
-            os.path.join(output_dir, "manifest.mpd")
+            "ffmpeg",
+            '-i', manifest_path,
+            '-c:v', 'copy',  # Keep video codec intact
+            '-map', '0:v:0',  # Select first video stream
+            '-map', '0:a:m:language:eng?',  # Select English audio (fallback to first available)
+            '-c:a', 'aac',  # Remux audio to AAC
+            '-b:a', '192k',  # Set audio bitrate
+            '-preset', 'ultrafast',
+            '-tune', 'fastdecode',
+            '-f', 'dash',  # DASH output format
+            '-seg_duration', '4',  # Segment duration
+            '-use_timeline', '1',
+            '-use_template', '1',
+            '-init_seg_name', f'{output_dir}\\init-stream$RepresentationID$.m4s',  # FIXED
+            '-media_seg_name', f'{output_dir}\\chunk-stream$RepresentationID$-$Number$.m4s',  # FIXED
+            '-adaptation_sets', "id=0,streams=v id=1,streams=a",
+            '-hls_playlist', '1',  # Generate HLS playlist (optional)
+            '-dash_segment_type', 'mp4',
+            os.path.join(output_dir, 'manifest.mpd')  # Save manifest in correct directory
         ]
+
         try:
             subprocess.run(ffmpeg_command, check=True)
             logging.info("DASH segments created successfully")
