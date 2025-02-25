@@ -2,8 +2,9 @@ import logging
 import os
 import subprocess
 
-from flask import request, Response, send_file
-from app.services.config import MEDIA_EXTENSIONS, ffmpeg_path
+from flask import request, send_file
+
+from app.services.config import MEDIA_EXTENSIONS, ffmpeg_path, DASH_OUTPUT_DIR
 
 
 def find_media_files(directory_path, context, season_episode=None, follow_symlinks=False):
@@ -53,41 +54,6 @@ def find_media_files(directory_path, context, season_episode=None, follow_symlin
     return media_files
 
 
-def stream_and_remux(torrent_title):
-    media_file_path = request.args.get('file')
-    if not os.path.exists(media_file_path):
-        logging.error("Torrent file not found")
-        return "File not found", 404
-
-    logging.info("Torrent file found")
-    # FFmpeg command to transcode and stream the video
-    ffmpeg_command = [
-        ffmpeg_path,
-        '-i', media_file_path,
-        '-c:v', 'copy',  # Copy the video codec (no re-encoding)
-        '-map', '0:v:0',  # Select the first video stream
-        '-map', '0:a:m:language:eng',  # Select the audio stream with language "eng"
-        '-c:a', 'aac',  # Encode audio to AAC if necessary
-        '-b:a', '192k',  # Set the audio bitrate
-        '-preset', 'ultrafast',  # Use ultrafast preset for quicker encoding
-        '-tune', 'fastdecode',  # Tune for faster decoding (useful for streaming)
-        '-movflags', 'frag_keyframe+empty_moov',  # Optimize for streaming
-        '-f', 'mp4',  # Output format
-        'pipe:1'  # Streaming to stdout
-    ]
-
-    # Start FFmpeg process
-    try:
-        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logging.info("ffmpeg process started")
-    except Exception as e:
-        logging.error(f"ffmpeg process failed: {e}")
-        return "FFmpeg not found. Please ensure FFmpeg is installed and accessible.", 500
-
-    # Stream the output of FFmpeg to the client
-    return Response(ffmpeg_process.stdout, mimetype='video/mp4')
-
-
 def stream_mp4(torrent_title):
     media_file_path = request.args.get('file')
 
@@ -102,3 +68,53 @@ def stream_mp4(torrent_title):
         mimetype="video/mp4",
         as_attachment=False
     )
+
+
+def process_mkv_to_dash(torrent_title, input_file_path, torrent_dir):
+    """
+    Uses FFmpeg to remux an MKV file into a DASH stream.
+    - Copies the video stream (no re-encoding).
+    - Transcodes/remuxes the first English audio stream to AAC for browser compatibility.
+    - Generates DASH segments (10 seconds each) and an MPD manifest.
+    The DASH output is written to a dedicated folder based on the torrent title.
+    """
+    # We'll use the torrent_title (which should correspond to the directory name of the torrent)
+    output_dir = os.path.join(torrent_dir, DASH_OUTPUT_DIR)
+    os.makedirs(output_dir, exist_ok=True)
+    mpd_file = os.path.join(output_dir, "manifest.mpd")
+
+    # If the DASH output already exists, we assume it’s ready.
+    if os.path.exists(mpd_file):
+        return mpd_file
+
+    # Build the FFmpeg command.
+    # Note: Adjust segment naming options (-init_seg_name and -media_seg_name) as needed.
+    ffmpeg_command = [
+        ffmpeg_path,
+        "-y",  # Overwrite existing files if needed.
+        "-i", input_file_path,  # Full path to the MKV file.
+        "-c:v", "copy",  # Copy video stream.
+        "-map", "0:v:0",  # Use first video stream.
+        "-map", "0:a:m:language:eng",  # Select the English audio stream.
+        "-c:a", "aac",  # Transcode audio to AAC.
+        "-b:a", "192k",  # Audio bitrate.
+        "-f", "dash",  # Output format: DASH.
+        "-seg_duration", "10",  # 10-second segments.
+        "-use_timeline", "1",  # Use timeline in MPD.
+        "-use_template", "1",  # Use templates for segment naming.
+        # Force FFmpeg to create segments with predictable names:
+        "-init_seg_name", "init-$RepresentationID$.m4s",
+        "-media_seg_name", "chunk-$RepresentationID$-$Number$.m4s",
+        # Set a BaseURL so that the manifest uses URLs that point to your server's DASH endpoint:
+        # "-base_url", f"/dash/{torrent_title}/{output_dir}/",
+        os.path.join(output_dir, "manifest.mpd")
+    ]
+
+    try:
+        subprocess.run(ffmpeg_command, check=True)
+        logging.info("FFmpeg DASH process completed successfully")
+    except subprocess.CalledProcessError as e:
+        logging.error("FFmpeg DASH process failed: %s", e)
+        return None
+
+    return mpd_file

@@ -30,3 +30,4 @@ DASH_DIRECTORY = os.getenv('DASH_DIRECTORY')
 TMP_DIR = '../../tmp'
 SUBS_DIR = '../../subs'
 WIZDOM_DOMAIN = 'wizdom.xyz/api'
+DASH_OUTPUT_DIR = "U:\downloads\dash"  # Change this to match your preferred output location
