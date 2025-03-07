@@ -84,7 +84,7 @@ def get_first_subtitle_track(mkv_file):
     result = subprocess.run(["mkvmerge", "-i", mkv_file], capture_output=True, text=True)
 
     for line in result.stdout.splitlines():
-        match = re.search(r"Track ID (\d+): subtitles", line, re.IGNORECASE)
+        match = re.search(r"Track ID (\d+): subtitles \(SubRip/SRT\)", line, re.IGNORECASE)
         if match:
             return match.group(1)  # Return the first subtitle track ID
 
@@ -96,24 +96,28 @@ def extract_first_subtitle(mkv_file, output_srt):
     track_id = get_first_subtitle_track(mkv_file)
     if track_id is None:
         print("No subtitle track found!")
-        return
+        return False
 
     command = ["mkvextract", "tracks", mkv_file, f"{track_id}:{output_srt}"]
     try:
         subprocess.run(command, check=True)
         print(f"Extracted first subtitle track (ID {track_id}) to {output_srt}")
+        return True
     except subprocess.CalledProcessError as e:
         print(f"Error extracting subtitles: {e}")
+        return False
 
 
 def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
+    extracted_sub_exists = True
     extracted_subtitle_file = os.path.splitext(video_file)[0] + ".extracted.srt"
-    extract_first_subtitle(video_file, extracted_subtitle_file)
+    if not os.path.exists(extracted_subtitle_file):
+        extracted_sub_exists = extract_first_subtitle(video_file, extracted_subtitle_file)
+
     try:
-        # Sync subtitles using ffsubsync
         sys.argv = [
             "ffsubsync",
-            extracted_subtitle_file,
+            extracted_subtitle_file if extracted_sub_exists else video_file,
             "-i", unsynchronized_sub,
             "-o", synchronized_sub
         ]
