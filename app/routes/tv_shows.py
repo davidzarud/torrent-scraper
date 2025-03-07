@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from app.services import tmdb_service
 from app.services.config import TMDB_BASE_URL, TMDB_KEY
 from app.services.tmdb_service import get_top_rated_shows, get_trending_shows, get_tv_watchlist, \
-    get_popular_running_shows, search_tv_shows_by_name
+    get_popular_running_shows, search_tv_shows_by_name, advanced_search
 
 tv_shows_bp = Blueprint("tv_shows", __name__, url_prefix="")
 
@@ -14,14 +14,19 @@ def home_tv():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
 
-    if sort == 'top-rated':
-        shows, total_pages = get_top_rated_shows(page)
-    elif sort == 'trending':
-        shows, total_pages = get_trending_shows(page)
-    elif sort == 'watchlist':
-        shows, total_pages = get_tv_watchlist(page)
+    # Default tv show fetch case
+    if len(request.args) == 4 and request.args.get('rating_min') == '0' and request.args.get('rating_max') == '10':
+        if sort == 'top-rated':
+            shows, total_pages = get_top_rated_shows(page)
+        elif sort == 'trending':
+            shows, total_pages = get_trending_shows(page)
+        elif sort == 'watchlist':
+            shows, total_pages = get_tv_watchlist(page)
+        else:
+            shows, total_pages = get_popular_running_shows(page)
     else:
-        shows, total_pages = get_popular_running_shows(page)
+        shows, total_pages = advanced_search(request.args, 'tv')
+
     return jsonify({
         'movies': shows,
         'page': page,

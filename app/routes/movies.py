@@ -1,11 +1,9 @@
-import requests
 from flask import Blueprint, jsonify, request
 
 from app.services import tmdb_service
-from app.services.config import TMDB_BASE_URL, TMDB_KEY
 from app.services.html_service import search_torrents
 from app.services.tmdb_service import get_popular_bluray_movies, get_trending_movies, get_movie_watchlist, \
-    get_top_rated_movies, search_movies_by_name
+    get_top_rated_movies, search_movies_by_name, advanced_search
 
 movies_bp = Blueprint("movies", __name__, url_prefix="")
 
@@ -15,14 +13,19 @@ def get_movies():
     page = request.args.get('page', default=1, type=int)
     sort = request.args.get('sort', default='popular', type=str)
 
-    if sort == 'popular':
-        movies_result, total_pages = get_popular_bluray_movies(page)
-    elif sort == 'trending':
-        movies_result, total_pages = get_trending_movies(page)
-    elif sort == 'watchlist':
-        movies_result, total_pages = get_movie_watchlist(page)
+    # Default movie fetch case
+    if len(request.args) == 4 and request.args.get('rating_min') == '0' and request.args.get('rating_max') == '10':
+        if sort == 'popular':
+            movies_result, total_pages = get_popular_bluray_movies(page)
+        elif sort == 'trending':
+            movies_result, total_pages = get_trending_movies(page)
+        elif sort == 'watchlist':
+            movies_result, total_pages = get_movie_watchlist(page)
+        else:
+            movies_result, total_pages = get_top_rated_movies(page)
+    # Advance search case
     else:
-        movies_result, total_pages = get_top_rated_movies(page)
+        movies_result, total_pages = advanced_search(request.args, 'movie')
 
     # Return the movies result and optionally the total pages.
     return jsonify({
@@ -34,7 +37,6 @@ def get_movies():
 
 @movies_bp.route("/api/movie/<int:movie_id>", methods=["GET"])
 def movie_detail(movie_id):
-
     movie_data = tmdb_service.get_movie_details(movie_id)
 
     genres = [genre['name'] for genre in movie_data.get('genres', [])]

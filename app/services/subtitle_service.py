@@ -1,9 +1,15 @@
 import logging
+import os
+import re
+import subprocess
+import sys
 from json import load
 from os import path
 from time import time
 
+import pysubs2
 import requests
+from ffsubsync import main as ffsubsync_main
 
 from app.services.config import WIZDOM_DOMAIN, TMP_DIR, TMDB_KEY
 from app.services.utils import normalize_str
@@ -43,19 +49,6 @@ def convert_srt_to_vtt(srt_path, vtt_path):
         return False
 
 
-def save_heb_sub(srt_path, heb_srt_path):
-    try:
-        with open(srt_path, "r", encoding="utf-8-sig") as infile:
-            lines = infile.readlines()
-
-        with open(heb_srt_path, "w", encoding="utf-8") as outfile:
-            outfile.writelines(lines)
-        return True
-    except Exception as e:
-        logging.error(f"Error writing heb srt: {e}")
-        return False
-
-
 def search_by_imdb(imdb_id, season=0, episode=0, version=0):
     filename = f'wizdom.imdb.{imdb_id}.{season}.{episode}.json'
     url = (f"http://{WIZDOM_DOMAIN}/search?action=by_id&imdb={imdb_id}&season={season}&episode={episode}"
@@ -84,3 +77,54 @@ def search_tmdb(media_type, query, year=None):
     except (IndexError, KeyError) as e:
         logging.error(f"Error extracting TMDB ID: {e}")
     return None
+
+
+def get_first_subtitle_track(mkv_file):
+    """Finds the first subtitle track ID in an MKV file."""
+    result = subprocess.run(["mkvmerge", "-i", mkv_file], capture_output=True, text=True)
+
+    for line in result.stdout.splitlines():
+        match = re.search(r"Track ID (\d+): subtitles", line, re.IGNORECASE)
+        if match:
+            return match.group(1)  # Return the first subtitle track ID
+
+    return None  # No subtitles found
+
+
+def extract_first_subtitle(mkv_file, output_srt):
+    """Extracts the first detected subtitle track."""
+    track_id = get_first_subtitle_track(mkv_file)
+    if track_id is None:
+        print("No subtitle track found!")
+        return
+
+    command = ["mkvextract", "tracks", mkv_file, f"{track_id}:{output_srt}"]
+    try:
+        subprocess.run(command, check=True)
+        print(f"Extracted first subtitle track (ID {track_id}) to {output_srt}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error extracting subtitles: {e}")
+
+
+def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
+    extracted_subtitle_file = os.path.splitext(video_file)[0] + ".extracted.srt"
+    extract_first_subtitle(video_file, extracted_subtitle_file)
+    try:
+        # Sync subtitles using ffsubsync
+        sys.argv = [
+            "ffsubsync",
+            extracted_subtitle_file,
+            "-i", unsynchronized_sub,
+            "-o", synchronized_sub
+        ]
+        ffsubsync_main()  # Runs the sync process
+        return True
+    except Exception as e:
+        return False
+
+
+def sync_with_fixed_offset(synchronized_sub, unsynchronized_sub, offset):
+    subs = pysubs2.load(unsynchronized_sub)
+    subs.shift(ms=offset * 1000)
+    subs.save(synchronized_sub)
+    return True
