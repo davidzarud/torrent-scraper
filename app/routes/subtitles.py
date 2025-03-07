@@ -113,7 +113,7 @@ def list_subtitles():
 @subtitles_bp.route('/api/subtitle/sync', methods=['POST'])
 def sync_subtitles():
     data = request.get_json()
-    movie_title, context, name = data.get('movie_title'), data.get('context'), data.get('version_name')
+    movie_title, context, name = data.get('movie_title'), data.get('context'), data.get('season_episode')
     method = data.get('method')
 
     # Determine correct video file location
