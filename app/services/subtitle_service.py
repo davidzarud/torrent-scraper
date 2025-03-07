@@ -136,8 +136,7 @@ def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
     # Function to read output and update global_progress
     def read_output():
         for line in iter(process.stdout.readline, ''):
-            # Debug: print the line to console if desired
-            # print(line.strip())
+            print(line.strip())
             match = re.search(r"(\d+)%", line)
             if match:
                 config.global_progress = match.group(1)

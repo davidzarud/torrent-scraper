@@ -4,7 +4,6 @@ import re
 import shutil
 import threading
 import zipfile
-from time import sleep
 
 import requests
 from flask import Blueprint, jsonify, request, Response, stream_with_context
@@ -146,6 +145,8 @@ def sync_subtitles():
 
 @subtitles_bp.route('/api/subtitle/sync-progress')
 def report_sync_progress():
+    config.global_progress = "0"
+
     def generate():
         while True:
             if int(config.global_progress) > 100:
