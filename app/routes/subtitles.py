@@ -4,10 +4,12 @@ import re
 import shutil
 import threading
 import zipfile
+from time import sleep
 
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response, stream_with_context
 
+from app.services import config
 from app.services.config import WIZDOM_DOMAIN, SUBS_DIR, DOWNLOADS_BASE_PATH
 from app.services.jellyfin_service import notify_jellyfin
 from app.services.subtitle_service import search_by_imdb, convert_srt_to_vtt, sync_with_ffsubsync, \
@@ -140,3 +142,14 @@ def sync_subtitles():
         return jsonify({"success": True, "message": "Subtitles synced successfully."})
     else:
         return jsonify({"success": False, "message": f"Subtitle syncing failed"}), 500
+
+
+@subtitles_bp.route('/api/subtitle/sync-progress')
+def report_sync_progress():
+    def generate():
+        while True:
+            if int(config.global_progress) > 100:
+                break
+            yield f"data: {config.global_progress}%\n\n"
+
+    return Response(stream_with_context(generate()), content_type="text/event-stream")

@@ -2,15 +2,15 @@ import logging
 import os
 import re
 import subprocess
-import sys
+import threading
 from json import load
 from os import path
 from time import time
 
 import pysubs2
 import requests
-from ffsubsync import main as ffsubsync_main
 
+import app.services.config as config
 from app.services.config import WIZDOM_DOMAIN, TMP_DIR, TMDB_KEY
 from app.services.utils import normalize_str
 
@@ -114,17 +114,43 @@ def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
     if not os.path.exists(extracted_subtitle_file):
         extracted_sub_exists = extract_first_subtitle(video_file, extracted_subtitle_file)
 
-    try:
-        sys.argv = [
-            "ffsubsync",
-            extracted_subtitle_file if extracted_sub_exists else video_file,
-            "-i", unsynchronized_sub,
-            "-o", synchronized_sub
-        ]
-        ffsubsync_main()  # Runs the sync process
-        return True
-    except Exception as e:
-        return False
+    # Build the command array
+    command = [
+        "ffsubsync",
+        extracted_subtitle_file if extracted_sub_exists else video_file,
+        "-i", unsynchronized_sub,
+        "-o", synchronized_sub
+    ]
+
+    # Start ffsubsync as a subprocess, capturing stdout (and stderr merged)
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1  # Line-buffered
+    )
+
+    # Function to read output and update global_progress
+    def read_output():
+        for line in iter(process.stdout.readline, ''):
+            # Debug: print the line to console if desired
+            # print(line.strip())
+            match = re.search(r"(\d+)%", line)
+            if match:
+                config.global_progress = match.group(1)
+        process.stdout.close()
+
+    # Start the output reader in a background thread
+    thread = threading.Thread(target=read_output, daemon=True)
+    thread.start()
+
+    # Wait for ffsubsync to finish
+    process.wait()
+
+    return process.returncode == 0
 
 
 def sync_with_fixed_offset(synchronized_sub, unsynchronized_sub, offset):
