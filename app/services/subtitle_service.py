@@ -100,9 +100,30 @@ def extract_first_subtitle(mkv_file, output_srt):
 
     command = ["mkvextract", "tracks", mkv_file, f"{track_id}:{output_srt}"]
     try:
-        subprocess.run(command, check=True)
+        # subprocess.run(command, check=True)
+        config.global_sync_process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1
+        )
+
+        # Function to read output and update global_progress
+        def read_output():
+            read_percentage()
+
+        thread = threading.Thread(target=read_output, daemon=True)
+        thread.start()
+
+        # Wait for mkvmerge to finish
+        config.global_sync_process.wait()
+
         print(f"Extracted first subtitle track (ID {track_id}) to {output_srt}")
-        return True
+        return config.global_sync_process.returncode == 0
+
     except subprocess.CalledProcessError as e:
         print(f"Error extracting subtitles: {e}")
         return False
@@ -135,12 +156,7 @@ def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
 
     # Function to read output and update global_progress
     def read_output():
-        for line in iter(config.global_sync_process.stdout.readline, ''):
-            print(line.strip())
-            match = re.search(r"(\d+)%", line)
-            if match:
-                config.global_progress = match.group(1)
-        config.global_sync_process.stdout.close()
+        read_percentage()
 
     # Start the output reader in a background thread
     thread = threading.Thread(target=read_output, daemon=True)
@@ -157,3 +173,12 @@ def sync_with_fixed_offset(synchronized_sub, unsynchronized_sub, offset):
     subs.shift(ms=offset * 1000)
     subs.save(synchronized_sub)
     return True
+
+
+def read_percentage():
+    for line in iter(config.global_sync_process.stdout.readline, ''):
+        print(line.strip())
+        match = re.search(r"(\d+)%", line)
+        if match:
+            config.global_progress = match.group(1)
+    config.global_sync_process.stdout.close()
