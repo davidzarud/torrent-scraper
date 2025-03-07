@@ -3,7 +3,13 @@ FROM python:3.11-slim
 
 # Install system dependencies and ffmpeg
 RUN apt-get update && \
-    apt-get install -y ffmpeg && \
+    apt-get install -y \
+    build-essential \
+    python3-dev \
+    libsndfile1 \
+    libsndfile1-dev \
+    ffmpeg \
+    mkvtoolnix && \
     rm -rf /var/lib/apt/lists/*
 
 # Set working directory
