@@ -154,3 +154,14 @@ def report_sync_progress():
             yield f"data: {config.global_progress}%\n\n"
 
     return Response(stream_with_context(generate()), content_type="text/event-stream")
+
+
+@subtitles_bp.route('/api/subtitle/cancel-sync', methods=['POST'])
+def cancel_subtitle_sync():
+    try:
+        sync_process = config.global_sync_process
+        sync_process.terminate()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+

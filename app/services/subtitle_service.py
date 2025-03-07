@@ -123,7 +123,7 @@ def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
     ]
 
     # Start ffsubsync as a subprocess, capturing stdout (and stderr merged)
-    process = subprocess.Popen(
+    config.global_sync_process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -135,21 +135,21 @@ def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
 
     # Function to read output and update global_progress
     def read_output():
-        for line in iter(process.stdout.readline, ''):
+        for line in iter(config.global_sync_process.stdout.readline, ''):
             print(line.strip())
             match = re.search(r"(\d+)%", line)
             if match:
                 config.global_progress = match.group(1)
-        process.stdout.close()
+        config.global_sync_process.stdout.close()
 
     # Start the output reader in a background thread
     thread = threading.Thread(target=read_output, daemon=True)
     thread.start()
 
     # Wait for ffsubsync to finish
-    process.wait()
+    config.global_sync_process.wait()
 
-    return process.returncode == 0
+    return config.global_sync_process.returncode == 0
 
 
 def sync_with_fixed_offset(synchronized_sub, unsynchronized_sub, offset):

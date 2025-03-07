@@ -1,6 +1,7 @@
 import os
 
 global_progress = "0"
+global_sync_process = None
 
 ffmpeg_path = os.getenv('FFMPEG_PATH', 'ffmpeg')  # Default to 'ffmpeg' if not set
 
