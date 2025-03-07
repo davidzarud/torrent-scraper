@@ -1,7 +1,8 @@
 import logging
 
 import requests
-from app.services.config import TMDB_BASE_URL, TMDB_KEY
+
+from app.services.config import TMDB_BASE_URL, TMDB_KEY, MOVIE_GENRE_MAP, TV_GENRE_MAP, NETWORK_ID_MAP
 from app.services.subtitle_service import caching_json
 from app.services.utils import normalize_str
 
@@ -188,3 +189,59 @@ def search_tmdb(media_type, query, year=None):
     except (IndexError, KeyError) as e:
         logging.error(f"Error extracting TMDB ID: {e}")
     return None
+
+
+def advanced_search(args, context):
+    page = args.get('page')
+    from_date = args.get('from_date')
+    to_date = args.get('to_date')
+    rating_min = args.get('rating_min')
+    rating_max = args.get('rating_max')
+    genres = args.get('genres')
+    providers = args.get('providers')
+
+    url = f'https://api.themoviedb.org/3/discover/{context}'
+    params = {
+        'api_key': TMDB_KEY,
+        'page': page,
+        'include_adult': True,
+        'sort_by': 'popularity.desc'
+    }
+
+    if context == 'movie':
+        optional_params = {
+            'primary_release_date.gte': from_date,
+            'primary_release_date.lte': to_date,
+            'vote_average.gte': rating_min,
+            'vote_average.lte': rating_max,
+            'with_genres': map_to_list(genres, MOVIE_GENRE_MAP)
+        }
+    else:
+        optional_params = {
+            'first_air_date.gte': from_date,
+            'first_air_date.lte': to_date,
+            'vote_average.gte': rating_min,
+            'vote_average.lte': rating_max,
+            'with_genres': map_to_list(genres, TV_GENRE_MAP),
+            'with_networks': map_to_list(providers, NETWORK_ID_MAP)
+        }
+
+    params.update({k: v for k, v in optional_params.items() if v is not None})
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        total_pages = data.get('total_pages', 1)
+        return data['results'], total_pages
+    else:
+        print(f"Error: Unable to fetch TV shows from TMDb. Status code: {response.status_code}")
+        return [], 1
+
+
+def map_to_list(str_list, id_map):
+    if str_list is None or str_list == '':
+        return None
+
+    genres_list = [genre.strip() for genre in str_list.split(",")]  # Split and trim spaces
+    genre_ids = [str(id_map[genre]) for genre in genres_list if genre in id_map]
+    return "|".join(genre_ids)

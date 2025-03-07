@@ -1,10 +1,16 @@
 import logging
+import os
+import re
+import subprocess
+import threading
 from json import load
 from os import path
 from time import time
 
+import pysubs2
 import requests
 
+import app.services.config as config
 from app.services.config import WIZDOM_DOMAIN, TMP_DIR, TMDB_KEY
 from app.services.utils import normalize_str
 
@@ -71,3 +77,108 @@ def search_tmdb(media_type, query, year=None):
     except (IndexError, KeyError) as e:
         logging.error(f"Error extracting TMDB ID: {e}")
     return None
+
+
+def get_first_subtitle_track(mkv_file):
+    """Finds the first subtitle track ID in an MKV file."""
+    result = subprocess.run(["mkvmerge", "-i", mkv_file], capture_output=True, text=True)
+
+    for line in result.stdout.splitlines():
+        match = re.search(r"Track ID (\d+): subtitles \(SubRip/SRT\)", line, re.IGNORECASE)
+        if match:
+            return match.group(1)  # Return the first subtitle track ID
+
+    return None  # No subtitles found
+
+
+def extract_first_subtitle(mkv_file, output_srt):
+    """Extracts the first detected subtitle track."""
+    track_id = get_first_subtitle_track(mkv_file)
+    if track_id is None:
+        print("No subtitle track found!")
+        return False
+
+    command = ["mkvextract", "tracks", mkv_file, f"{track_id}:{output_srt}"]
+    try:
+        # subprocess.run(command, check=True)
+        config.global_sync_process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1
+        )
+
+        # Function to read output and update global_progress
+        def read_output():
+            read_percentage()
+
+        thread = threading.Thread(target=read_output, daemon=True)
+        thread.start()
+
+        # Wait for mkvmerge to finish
+        config.global_sync_process.wait()
+
+        print(f"Extracted first subtitle track (ID {track_id}) to {output_srt}")
+        return config.global_sync_process.returncode == 0
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error extracting subtitles: {e}")
+        return False
+
+
+def sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file):
+    extracted_sub_exists = True
+    extracted_subtitle_file = os.path.splitext(video_file)[0] + ".extracted.srt"
+    if not os.path.exists(extracted_subtitle_file):
+        extracted_sub_exists = extract_first_subtitle(video_file, extracted_subtitle_file)
+
+    # Build the command array
+    command = [
+        "ffsubsync",
+        extracted_subtitle_file if extracted_sub_exists else video_file,
+        "-i", unsynchronized_sub,
+        "-o", synchronized_sub
+    ]
+
+    # Start ffsubsync as a subprocess, capturing stdout (and stderr merged)
+    config.global_sync_process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1  # Line-buffered
+    )
+
+    # Function to read output and update global_progress
+    def read_output():
+        read_percentage()
+
+    # Start the output reader in a background thread
+    thread = threading.Thread(target=read_output, daemon=True)
+    thread.start()
+
+    # Wait for ffsubsync to finish
+    config.global_sync_process.wait()
+
+    return config.global_sync_process.returncode == 0
+
+
+def sync_with_fixed_offset(synchronized_sub, unsynchronized_sub, offset):
+    subs = pysubs2.load(unsynchronized_sub)
+    subs.shift(ms=offset * 1000)
+    subs.save(synchronized_sub)
+    return True
+
+
+def read_percentage():
+    for line in iter(config.global_sync_process.stdout.readline, ''):
+        print(line.strip())
+        match = re.search(r"(\d+)%", line)
+        if match:
+            config.global_progress = match.group(1)
+    config.global_sync_process.stdout.close()

@@ -87,12 +87,15 @@ def get_recommendations(tmdb_id):
         title = tmdb_service.get_tv_show_details(tmdb_id).get('name')
         media_type = "tv show"
     try:
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         prompt = (
             f"You now assume a role of a movie and tv show expert. Based on the {media_type} {title} suggest 20 movies and 20 tv "
-            f"shows that i might like if i like this title. List movies first with each movie in its own row. "
-            f"surround each movie with *** at the beginning and at the end. Underneath that list tv shows with "
-            f"each tv show in its own row. surround each tv show with *** at the beginning and at the end.")
+            f"shows that i might like if i like this title. Do not be very obvious with your choices, for example if the title is a "
+            f"marvel movie don't just suggest other marvel movies, think outside of the box. Try to think of an overall theme and "
+            f"atmosphere of a movie before you suggest. try to avoid suggesting sequels/prequels. List movies first with each movie "
+            f"in its own row. the heading lines are ***Movies*** and ***TV Shows***. surround each movie with *** at the beginning "
+            f"and at the end. Underneath that list tv shows with each tv show in its own row. surround each tv show with *** at the "
+            f"beginning and at the end. You should be extremely strict about the formatting")
 
         logging.info(f"Searching recommendations for: {title}")
         response = model.generate_content(prompt)
@@ -110,15 +113,17 @@ def get_recommendations(tmdb_id):
                 recommended_movie = tmdb_movie.get('results')[0]
                 recommended_movies.append({'id': recommended_movie.get('id'),
                                            'title': recommended_movie.get('title'),
-                                           'imageUrl': 'https://image.tmdb.org/t/p/w92' + recommended_movie.get('poster_path')})
+                                           'imageUrl': 'https://image.tmdb.org/t/p/w92' + recommended_movie.get(
+                                               'poster_path')})
 
         for tv_show in tv_shows_list:
             tmdb_tv_show = tmdb_service.search_tv_shows_by_name(tv_show, 1)
             if tmdb_tv_show and tmdb_tv_show.get('results'):
                 recommended_tv_show = tmdb_tv_show.get('results')[0]
                 recommended_tv_shows.append({'id': recommended_tv_show.get('id'),
-                                         'title': recommended_tv_show.get('name'),
-                                         'imageUrl': 'https://image.tmdb.org/t/p/w92' + recommended_tv_show.get('poster_path')})
+                                             'title': recommended_tv_show.get('name'),
+                                             'imageUrl': 'https://image.tmdb.org/t/p/w92' + recommended_tv_show.get(
+                                                 'poster_path')})
 
         logging.info("AI model returned recommendations")
         return jsonify({"movies": recommended_movies, "shows": recommended_tv_shows})
