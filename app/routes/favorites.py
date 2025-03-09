@@ -80,7 +80,7 @@ def get_favorites():
 @favorites_bp.route('/api/recommendations/<int:tmdb_id>', methods=['GET'])
 def get_recommendations(tmdb_id):
     media_type = request.args.get('type')
-    if media_type == 'movies':
+    if media_type == 'movie':
         title = tmdb_service.get_movie_details(tmdb_id).get('title')
         media_type = "movie"
     else:
