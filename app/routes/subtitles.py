@@ -135,7 +135,7 @@ def sync_subtitles():
     ]
 
     unsynchronized_sub = next((sub for sub in possible_subtitles if os.path.exists(sub)), None)
-    synchronized_sub = os.path.splitext(video_file)[0] + ".sync.srt"
+    synchronized_sub = unsynchronized_sub.replace(".srt", ".sync.srt")
 
     if not unsynchronized_sub:
         return jsonify({"success": False, "message": f"No subtitle to sync"}), 500
@@ -174,4 +174,3 @@ def cancel_subtitle_sync():
         return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
