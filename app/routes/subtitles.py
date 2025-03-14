@@ -127,8 +127,18 @@ def sync_subtitles():
         return jsonify({"success": False, "message": "No matching media file found."}), 404
 
     # Locate the corresponding subtitle file
-    unsynchronized_sub = os.path.splitext(video_file)[0] + ".srt"
+    base_unsynced_sub = os.path.splitext(video_file)[0]
+    possible_subtitles = [
+        f"{base_unsynced_sub}.srt",
+        f"{base_unsynced_sub}.heb.srt",
+        f"{base_unsynced_sub}.he.srt"
+    ]
+
+    unsynchronized_sub = next((sub for sub in possible_subtitles if os.path.exists(sub)), None)
     synchronized_sub = os.path.splitext(video_file)[0] + ".sync.srt"
+
+    if not unsynchronized_sub:
+        return jsonify({"success": False, "message": f"No subtitle to sync"}), 500
 
     if method == 'auto':
         synced = sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file)
