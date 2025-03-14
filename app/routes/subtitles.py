@@ -113,7 +113,7 @@ def list_subtitles():
 @subtitles_bp.route('/api/subtitle/sync', methods=['POST'])
 def sync_subtitles():
     data = request.get_json()
-    movie_title, context, name = data.get('movie_title'), data.get('context'), data.get('version_name')
+    movie_title, context, name = data.get('movie_title'), data.get('context'), data.get('season_episode')
     method = data.get('method')
 
     # Determine correct video file location
@@ -127,8 +127,18 @@ def sync_subtitles():
         return jsonify({"success": False, "message": "No matching media file found."}), 404
 
     # Locate the corresponding subtitle file
-    unsynchronized_sub = os.path.splitext(video_file)[0] + ".srt"
-    synchronized_sub = os.path.splitext(video_file)[0] + ".sync.srt"
+    base_unsynced_sub = os.path.splitext(video_file)[0]
+    possible_subtitles = [
+        f"{base_unsynced_sub}.srt",
+        f"{base_unsynced_sub}.heb.srt",
+        f"{base_unsynced_sub}.he.srt"
+    ]
+
+    unsynchronized_sub = next((sub for sub in possible_subtitles if os.path.exists(sub)), None)
+    synchronized_sub = unsynchronized_sub.replace(".srt", ".sync.srt")
+
+    if not unsynchronized_sub:
+        return jsonify({"success": False, "message": f"No subtitle to sync"}), 500
 
     if method == 'auto':
         synced = sync_with_ffsubsync(synchronized_sub, unsynchronized_sub, video_file)
@@ -164,4 +174,3 @@ def cancel_subtitle_sync():
         return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
