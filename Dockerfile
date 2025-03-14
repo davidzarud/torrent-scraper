@@ -1,31 +1,35 @@
-# Use the official Python image from the DockerHub
-FROM python:3.11-slim
-
-# Install system dependencies and ffmpeg
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
-    python3-dev \
-    libsndfile1 \
-    libsndfile1-dev \
-    ffmpeg \
-    mkvtoolnix && \
-    rm -rf /var/lib/apt/lists/*
+# Use a minimal Python base image
+FROM python:3.11-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . .
+# Install necessary system dependencies
+RUN apk add --no-cache \
+    ffmpeg \
+    mkvtoolnix \
+    gcc \
+    musl-dev \
+    libsndfile \
+    python3-dev
 
-# Install any needed packages specified in requirements.txt
+# Copy requirements first (to leverage Docker caching)
+COPY requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 8888 available to the world outside this container
+# Remove unnecessary build dependencies to reduce image size
+RUN apk del gcc musl-dev python3-dev
+
+# Copy the rest of the application
+COPY . .
+
+# Expose Flask port
 EXPOSE 8888
 
-# Define environment variable
+# Set environment variables
 ENV FLASK_APP=run:app
 
-# Run flask server
+# Run Flask server
 CMD ["flask", "run", "--host=0.0.0.0", "--port=8888"]

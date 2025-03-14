@@ -87,7 +87,7 @@ def get_recommendations(tmdb_id):
         title = tmdb_service.get_tv_show_details(tmdb_id).get('name')
         media_type = "tv show"
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         prompt = (
             f"You now assume a role of a movie and tv show expert. Based on the {media_type} {title} suggest 20 movies and 20 tv "
             f"shows that i might like if i like this title. Do not be very obvious with your choices, for example if the title is a "
