@@ -8,7 +8,7 @@ from flask import jsonify
 from fuzzywuzzy import fuzz
 
 
-def add_torrent_to_qbittorrent(magnet_link, context, title):
+def add_torrent_to_qbittorrent(torrent_file, magnet_link, context, title):
     from app.routes.torrents import qtorrent_session
     if not QBITTORRENT_BASE_URL or not QBITTORRENT_USERNAME or not QBITTORRENT_PASSWORD:
         print("qBittorrent credentials not set.")
@@ -21,10 +21,23 @@ def add_torrent_to_qbittorrent(magnet_link, context, title):
 
     add_torrent_url = f"{QBITTORRENT_BASE_URL}/api/v2/torrents/add"
     title = unescape_html(title)
-    data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true',
-            'savepath': f'{context}/{title}'}
+
+    files = None
+    data = {}
+    if magnet_link is not None:
+        data = {'urls': magnet_link, 'sequentialDownload': 'true', 'firstLastPiecePrio': 'true',
+                'savepath': f'{context}/{title}'}
+    if torrent_file is not None:
+        files = {'torrents': (torrent_file.filename, torrent_file.stream, torrent_file.mimetype)}
+        data = {'sequentialDownload': 'true', 'firstLastPiecePrio': 'true',
+                'savepath': f'{context}/{title}'}
+
     try:
-        response = qtorrent_session.post(add_torrent_url, data=data)
+        if files is not None:
+            response = qtorrent_session.post(add_torrent_url, data=data, files=files)
+        else:
+            response = qtorrent_session.post(add_torrent_url, data=data)
+
         response.raise_for_status()
 
         threading.Timer(5, notify_jellyfin).start()

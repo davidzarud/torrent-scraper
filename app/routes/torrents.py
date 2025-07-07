@@ -18,13 +18,28 @@ def get_magnet_link():
     title = re.sub(r'[<>:"/\\|?*]', '', data.get('title'))
     magnet_link = fetch_magnet_link(torrent_url)
     if magnet_link:
-        success = add_torrent_to_qbittorrent(magnet_link, context, title)
+        success = add_torrent_to_qbittorrent(None, magnet_link, context, title)
         if success:
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'error': 'Failed to add torrent to qBittorrent'})
     else:
         return jsonify({'success': False, 'error': 'Failed to fetch magnet link'})
+
+
+@torrents_bp.route("/api/upload_torrent", methods=["POST"])
+def upload_torrent_file():
+    torrent_file = request.files.get('torrent_file')
+    context = request.form.get('context')
+    title = re.sub(r'[<>:"/\\|?*]', '', request.form.get('title'))
+    if torrent_file:
+        success = add_torrent_to_qbittorrent(torrent_file, None, context, title)
+        if success:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to add torrent to qBittorrent'})
+    else:
+        return jsonify({'success': False, 'error': 'Failed to receive torrent file'})
 
 
 @torrents_bp.route("/api/search_torrents")
