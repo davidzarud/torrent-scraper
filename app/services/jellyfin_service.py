@@ -1,6 +1,6 @@
 import logging
 
-from config import JELLYFIN_BASE_URL, JELLYFIN_API_KEY
+from app.services.config import JELLYFIN_BASE_URL, JELLYFIN_API_KEY
 from flask import jsonify
 import requests
 
