@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag'
+        required: true
 
 jobs:
   build-and-push:
@@ -30,6 +34,6 @@ jobs:
           push: true
           tags: |
             davidzarud/torrent-scraper:latest
-            davidzarud/torrent-scraper:${{ github.sha }}
+            davidzarud/torrent-scraper:${{ github.event.inputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
